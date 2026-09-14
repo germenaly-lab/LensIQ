@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "LensIQ Multi-Source CCTV Backend API",
-    "description": "Enterprise CCTV monitoring REST API supporting multiple video source types (RTSP and Hikvision P2P) with zero secret leakage and AI stream normalization.",
-    "version": "1.0.0"
+    "title": "LensIQ Multi-Source CCTV Backend & Streaming Gateway API",
+    "description": "Enterprise CCTV monitoring REST API and Streaming Gateway supporting multiple video source types (RTSP and Hikvision P2P) with zero secret leakage, single-pipeline multiplexing, and AI stream normalization.",
+    "version": "1.1.0"
   },
   "servers": [
     {
@@ -11,8 +11,8 @@
       "description": "Local Development Server"
     },
     {
-      "url": "https://api.lensiq.cloud/api/v1",
-      "description": "Production API Gateway"
+      "url": "https://stream.lensiq.cloud/api/v1",
+      "description": "Production Streaming Gateway"
     }
   ],
   "paths": {
@@ -58,39 +58,26 @@
           },
           "400": {
             "description": "Validation failed"
-          },
-          "403": {
-            "description": "Unauthorized tenant/branch access"
           }
         }
       }
     },
     "/cameras/{id}": {
       "get": {
-        "summary": "Get camera details by ID",
+        "summary": "Get camera by ID",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": {
-          "200": { "description": "Safe camera record" },
-          "403": { "description": "Forbidden" },
+          "200": { "description": "Safe camera DTO" },
           "404": { "description": "Camera not found" }
-        }
-      },
-      "delete": {
-        "summary": "Delete a camera",
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Camera deleted" }
         }
       }
     },
     "/streams/{cameraId}/session": {
       "post": {
-        "summary": "Initiate a live streaming session",
-        "description": "Determines camera source type and delegates to the appropriate source adapter (RTSPSourceService or HikvisionP2PSourceService), producing a normalized WebRTC/HLS and AI vision stream descriptor.",
+        "summary": "Initiate or attach to a live streaming session",
+        "description": "Orchestrates source adapter ingestion (RTSPSourceAdapter or HikvisionP2PSourceAdapter), multiplexes viewers onto a single underlying pipeline, and returns authenticated playback details.",
         "parameters": [
           { "name": "cameraId", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
@@ -100,7 +87,9 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "streamProfile": { "type": "string", "enum": ["main", "sub"], "default": "main" }
+                  "streamProfile": { "type": "string", "enum": ["main", "sub"], "default": "main" },
+                  "protocol": { "type": "string", "enum": ["webrtc", "hls"], "default": "webrtc" },
+                  "demoMode": { "type": "boolean", "default": false }
                 }
               }
             }
@@ -108,11 +97,11 @@
         },
         "responses": {
           "201": {
-            "description": "Streaming session descriptor created",
+            "description": "Unified streaming session initiated",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StreamSessionDescriptor"
+                  "$ref": "#/components/schemas/UnifiedStreamSession"
                 }
               }
             }
@@ -122,24 +111,70 @@
         }
       }
     },
-    "/internal/events": {
+    "/streams/{cameraId}/reconnect": {
       "post": {
-        "summary": "Ingest AI detection events from Python CV microservice",
-        "security": [{ "InternalServiceKey": [] }],
+        "summary": "Trigger explicit camera reconnection",
+        "description": "Re-initiates connection and acquisition sequence on the camera source adapter.",
+        "parameters": [
+          { "name": "cameraId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
         "responses": {
-          "202": { "description": "Event accepted onto backend event bus" }
+          "200": { "description": "Reconnection sequence executed" }
+        }
+      }
+    },
+    "/streams/{cameraId}/stop": {
+      "post": {
+        "summary": "Release viewer stream session",
+        "description": "Decrements viewer count. When 0 viewers remain, the idle reaper will safely stop and cleanup the underlying ingest pipeline.",
+        "parameters": [
+          { "name": "cameraId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["sessionId"],
+                "properties": {
+                  "sessionId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Session released" }
+        }
+      }
+    },
+    "/streams/{cameraId}/status": {
+      "get": {
+        "summary": "Get real-time camera health telemetry",
+        "parameters": [
+          { "name": "cameraId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Real-time telemetry metrics" }
+        }
+      }
+    },
+    "/streams/playback/{token}": {
+      "get": {
+        "summary": "Verify ephemeral playback token",
+        "description": "Public playback verification endpoint called by Flutter and Web video players.",
+        "parameters": [
+          { "name": "token", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Token verified and active session descriptor returned" },
+          "401": { "description": "Invalid or expired token" }
         }
       }
     }
   },
   "components": {
-    "securitySchemes": {
-      "InternalServiceKey": {
-        "type": "apiKey",
-        "name": "X-Internal-Service-Key",
-        "in": "header"
-      }
-    },
     "schemas": {
       "CreateCameraRequest": {
         "type": "object",
@@ -162,20 +197,42 @@
           "stream_profile": { "type": "string", "enum": ["main", "sub"], "default": "main" }
         }
       },
-      "StreamSessionDescriptor": {
+      "UnifiedStreamSession": {
         "type": "object",
         "properties": {
-          "sessionId": { "type": "string" },
-          "cameraId": { "type": "string" },
-          "sourceType": { "type": "string", "enum": ["rtsp", "hikvision_p2p"] },
-          "connectionStatus": { "type": "string", "enum": ["configured", "connecting", "online", "offline", "unsupported", "error"] },
-          "streamProfile": { "type": "string", "enum": ["main", "sub"] },
-          "playbackProtocol": { "type": "string", "enum": ["webrtc", "hls", "mse"] },
-          "streamEndpoint": { "type": "string" },
-          "aiNormalizedStreamUrl": { "type": "string" },
-          "isP2P": { "type": "boolean" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "expiresAt": { "type": "string", "format": "date-time" }
+          "session_id": { "type": "string" },
+          "camera_id": { "type": "string" },
+          "source_type": { "type": "string", "enum": ["rtsp", "hikvision_p2p"] },
+          "stream_url": { "type": "string" },
+          "token": { "type": "string" },
+          "protocol": { "type": "string", "enum": ["webrtc", "hls"] },
+          "status": { "type": "string", "enum": ["active", "idle", "reconnecting", "terminating", "expired"] },
+          "created_at": { "type": "string", "format": "date-time" },
+          "expires_at": { "type": "string", "format": "date-time" },
+          "viewer_count": { "type": "integer" },
+          "demo_mode": { "type": "boolean" },
+          "stream_info": {
+            "type": "object",
+            "properties": {
+              "resolution": { "type": "string" },
+              "fps": { "type": "integer" },
+              "codec": { "type": "string" },
+              "profile": { "type": "string" }
+            }
+          },
+          "monitoring": {
+            "type": "object",
+            "properties": {
+              "connection_status": { "type": "string" },
+              "latency_ms": { "type": "number" },
+              "reconnect_count": { "type": "integer" },
+              "last_error": { "type": "string", "nullable": true },
+              "last_successful_frame": { "type": "string", "nullable": true },
+              "stream_start_time": { "type": "string", "nullable": true },
+              "uptime_seconds": { "type": "integer" },
+              "viewer_count": { "type": "integer" }
+            }
+          }
         }
       }
     }

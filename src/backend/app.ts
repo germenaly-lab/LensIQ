@@ -9,7 +9,10 @@ import { createStreamRoutes } from './routes/stream.routes';
 import { createInternalRoutes } from './routes/internal.routes';
 import { authMiddleware } from './middleware/auth.middleware';
 
-export function createApp(customCameraService?: CameraService): Express {
+export function createApp(
+  customCameraService?: CameraService,
+  customGatewayService?: StreamingGatewayService
+): Express {
   const app = express();
 
   // Middleware
@@ -18,7 +21,7 @@ export function createApp(customCameraService?: CameraService): Express {
 
   // Services & Controllers
   const cameraService = customCameraService || new CameraService();
-  const gatewayService = new StreamingGatewayService(cameraService);
+  const gatewayService = customGatewayService || new StreamingGatewayService(cameraService);
 
   const cameraController = new CameraController(cameraService);
   const streamController = new StreamController(gatewayService);
