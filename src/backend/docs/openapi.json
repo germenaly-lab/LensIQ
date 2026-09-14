@@ -1,0 +1,183 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "LensIQ Multi-Source CCTV Backend API",
+    "description": "Enterprise CCTV monitoring REST API supporting multiple video source types (RTSP and Hikvision P2P) with zero secret leakage and AI stream normalization.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000/api/v1",
+      "description": "Local Development Server"
+    },
+    {
+      "url": "https://api.lensiq.cloud/api/v1",
+      "description": "Production API Gateway"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Service is healthy"
+          }
+        }
+      }
+    },
+    "/cameras": {
+      "get": {
+        "summary": "List cameras with multi-tenant filtering",
+        "parameters": [
+          { "name": "companyId", "in": "query", "schema": { "type": "string" } },
+          { "name": "branchId", "in": "query", "schema": { "type": "string" } },
+          { "name": "sourceType", "in": "query", "schema": { "type": "string", "enum": ["rtsp", "hikvision_p2p"] } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of safe camera DTOs (zero credentials exposed)"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new camera (RTSP or Hikvision P2P)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCameraRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Camera successfully created and registered with credentials vault"
+          },
+          "400": {
+            "description": "Validation failed"
+          },
+          "403": {
+            "description": "Unauthorized tenant/branch access"
+          }
+        }
+      }
+    },
+    "/cameras/{id}": {
+      "get": {
+        "summary": "Get camera details by ID",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Safe camera record" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Camera not found" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a camera",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Camera deleted" }
+        }
+      }
+    },
+    "/streams/{cameraId}/session": {
+      "post": {
+        "summary": "Initiate a live streaming session",
+        "description": "Determines camera source type and delegates to the appropriate source adapter (RTSPSourceService or HikvisionP2PSourceService), producing a normalized WebRTC/HLS and AI vision stream descriptor.",
+        "parameters": [
+          { "name": "cameraId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "streamProfile": { "type": "string", "enum": ["main", "sub"], "default": "main" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Streaming session descriptor created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamSessionDescriptor"
+                }
+              }
+            }
+          },
+          "403": { "description": "Unauthorized camera access" },
+          "404": { "description": "Camera not found" }
+        }
+      }
+    },
+    "/internal/events": {
+      "post": {
+        "summary": "Ingest AI detection events from Python CV microservice",
+        "security": [{ "InternalServiceKey": [] }],
+        "responses": {
+          "202": { "description": "Event accepted onto backend event bus" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "InternalServiceKey": {
+        "type": "apiKey",
+        "name": "X-Internal-Service-Key",
+        "in": "header"
+      }
+    },
+    "schemas": {
+      "CreateCameraRequest": {
+        "type": "object",
+        "required": ["name", "company_id", "branch_id", "source_type"],
+        "properties": {
+          "name": { "type": "string", "example": "Cashier 01" },
+          "company_id": { "type": "string", "format": "uuid" },
+          "brand_id": { "type": "string", "format": "uuid" },
+          "branch_id": { "type": "string", "format": "uuid" },
+          "source_type": { "type": "string", "enum": ["rtsp", "hikvision_p2p"] },
+          "location_description": { "type": "string", "example": "Counter 1 - Checkout" },
+          "rtsp_url": { "type": "string", "example": "rtsp://camera.local/live/ch1" },
+          "hik_device_id": { "type": "string", "example": "HIK-DEV-9011" },
+          "hik_serial_number": { "type": "string", "example": "SER123456" },
+          "hik_channel": { "type": "integer", "example": 1 },
+          "credentials_payload": {
+            "type": "object",
+            "description": "Sensitive credentials securely registered into vault; never stored plain in database"
+          },
+          "stream_profile": { "type": "string", "enum": ["main", "sub"], "default": "main" }
+        }
+      },
+      "StreamSessionDescriptor": {
+        "type": "object",
+        "properties": {
+          "sessionId": { "type": "string" },
+          "cameraId": { "type": "string" },
+          "sourceType": { "type": "string", "enum": ["rtsp", "hikvision_p2p"] },
+          "connectionStatus": { "type": "string", "enum": ["configured", "connecting", "online", "offline", "unsupported", "error"] },
+          "streamProfile": { "type": "string", "enum": ["main", "sub"] },
+          "playbackProtocol": { "type": "string", "enum": ["webrtc", "hls", "mse"] },
+          "streamEndpoint": { "type": "string" },
+          "aiNormalizedStreamUrl": { "type": "string" },
+          "isP2P": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}
