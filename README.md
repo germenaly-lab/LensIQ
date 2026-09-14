@@ -121,3 +121,21 @@ The test suite covers:
 5. **RLS prevents unauthorized camera access**: Ensures multi-tenant isolation across branches and companies.
 6. **Sensitive credentials are not returned to frontend/Flutter clients**: Confirms serialization removes all secret keys and inline passwords.
 7. **Existing dashboard queries continue working**: Validates branch filtering, company grouping, and count statistics.
+
+---
+
+## Phase 2: AI Computer Vision Microservice (`services/ai-service`)
+
+Phase 2 introduces a dedicated, high-performance Computer Vision microservice built with **Python 3.11+**, **FastAPI**, **YOLOv8**, **OpenCV**, and **NumPy**.
+
+### Key Capabilities
+- **YOLOv8 Detection**: Person detection (extensible to `car`, `bag`, `chair`, `cell phone`).
+- **Hardware Acceleration**: Auto-detects NVIDIA CUDA GPU, Apple Silicon MPS, or CPU.
+- **ROI Geometry Engine**: Evaluates rectangular and polygon zones with precise footprint analysis.
+- **Stateful Rule Engine**:
+  - Production Rule: **Cashier Area Empty** (`duration_seconds = 180`, `minimum_people = 0`).
+  - Timer lifecycle: Starts when empty, resets when person enters, restarts when empty again.
+  - Duplicate suppression: Prevents incident flooding during prolonged empty episodes.
+- **Microservice Integration**: Forwards structured `AIEvent` JSON payloads to the Node.js backend.
+- **Mock & Demo Simulation**: Test without GPU or physical cameras via `POST /simulate/cashier-empty`.
+

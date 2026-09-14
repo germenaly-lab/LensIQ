@@ -12,6 +12,7 @@
 
 # production
 /build
+.vercel/
 
 # misc
 .DS_Store
@@ -29,3 +30,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.pt
+
