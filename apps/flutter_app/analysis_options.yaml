@@ -1,0 +1,12 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    deprecated_member_use: ignore
+    slash_for_doc_comments: ignore
+    use_super_parameters: ignore
+    unnecessary_underscores: ignore
+
+linter:
+  rules:
+    avoid_print: false
