@@ -19,6 +19,8 @@ import '../../widgets/responsive_scaffold.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/severity_badge.dart';
 import '../../widgets/loading_view.dart';
+import 'brand_manager_dashboard.dart';
+import 'branch_security_dashboard.dart';
 import 'widgets/metric_card.dart';
 import 'widgets/dashboard_charts.dart';
 
@@ -48,7 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (user != null) {
         context.read<CameraProvider>().loadCameras(user);
         context.read<IncidentProvider>().loadData(user);
-        context.read<AdminProvider>().loadAllAdminData();
+        context.read<AdminProvider>().loadAllAdminData(user);
       }
     });
   }
@@ -71,6 +73,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final isDesktop = ResponsiveUtil.isDesktop(context);
 
+    // 1. Role-specific Dashboard Routing
+    if (user.isBrandManager) {
+      return ResponsiveScaffold(
+        currentRoute: '/dashboard',
+        title: '${user.brandName ?? "Brand"} Operations Center',
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, size: 20),
+            tooltip: 'Refresh Realtime Data',
+            onPressed: () {
+              cameraProv.loadCameras(user);
+              incidentProv.loadData(user);
+              adminProv.loadAllAdminData(user);
+            },
+          ),
+        ],
+        child: const BrandManagerDashboard(),
+      );
+    }
+
+    if (user.isBranchSecurity) {
+      if (!isDesktop) {
+        // Mobile-first specialized layout for Security Staff
+        return const BranchSecurityDashboard();
+      }
+      return ResponsiveScaffold(
+        currentRoute: '/dashboard',
+        title: '${user.branchName ?? "Branch"} Security Console',
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, size: 20),
+            tooltip: 'Refresh Realtime Data',
+            onPressed: () {
+              cameraProv.loadCameras(user);
+              incidentProv.loadData(user);
+              adminProv.loadAllAdminData(user);
+            },
+          ),
+        ],
+        child: const BranchSecurityDashboard(),
+      );
+    }
+
+    // 2. Super Admin Dashboard (Phase 6 Full Executive View)
     return ResponsiveScaffold(
       currentRoute: '/dashboard',
       title: 'Executive Monitoring Command Center',
@@ -81,7 +127,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onPressed: () {
             cameraProv.loadCameras(user);
             incidentProv.loadData(user);
-            adminProv.loadAllAdminData();
+            adminProv.loadAllAdminData(user);
           },
         ),
       ],

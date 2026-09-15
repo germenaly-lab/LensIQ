@@ -55,10 +55,17 @@ class UserProfile {
   bool get isBrandManager => role == UserRole.brandManager;
   bool get isBranchSecurity => role == UserRole.branchSecurity;
 
-  bool canAccessBranch(String branchId) {
+  bool canAccessBrand(String targetBrandId) {
     if (isSuperAdmin) return true;
-    if (isBrandManager) return true;
-    return authorizedBranchIds.contains(branchId) || this.branchId == branchId;
+    return brandId == targetBrandId;
+  }
+
+  bool canAccessBranch(String targetBranchId) {
+    if (isSuperAdmin) return true;
+    if (isBrandManager) {
+      return authorizedBranchIds.contains(targetBranchId) || branchId == targetBranchId;
+    }
+    return (branchId == targetBranchId) || authorizedBranchIds.contains(targetBranchId);
   }
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {

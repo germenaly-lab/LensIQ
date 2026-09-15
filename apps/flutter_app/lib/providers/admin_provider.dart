@@ -6,6 +6,7 @@ import '../models/branch.dart';
 import '../models/ai_rule.dart';
 import '../models/audit_log.dart';
 import '../models/roi.dart';
+import '../models/user_profile.dart';
 import '../services/mock_data_service.dart';
 
 class AdminProvider extends ChangeNotifier {
@@ -51,15 +52,24 @@ class AdminProvider extends ChangeNotifier {
   int get totalRulesCount => _rules.length;
   int get activeRulesCount => _rules.where((r) => r.enabled).length;
 
-  Future<void> loadAllAdminData() async {
+  Future<void> loadAllAdminData([UserProfile? user]) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      _companies = List.from(MockDataService.demoCompanies);
-      _brands = List.from(MockDataService.demoBrands);
-      _branches = List.from(MockDataService.demoBranches);
-      _rules = List.from(MockDataService.demoRules);
+      if (user != null) {
+        _companies = user.isSuperAdmin
+            ? List.from(MockDataService.demoCompanies)
+            : MockDataService.demoCompanies.where((c) => c.id == user.companyId).toList();
+        _brands = MockDataService.getBrandsForUser(user);
+        _branches = MockDataService.getBranchesForUser(user);
+        _rules = MockDataService.getRulesForUser(user);
+      } else {
+        _companies = List.from(MockDataService.demoCompanies);
+        _brands = List.from(MockDataService.demoBrands);
+        _branches = List.from(MockDataService.demoBranches);
+        _rules = List.from(MockDataService.demoRules);
+      }
       _auditLogs = List.from(MockDataService.demoAuditLogs);
       _rois = List.from(MockDataService.demoRois);
     } catch (e) {

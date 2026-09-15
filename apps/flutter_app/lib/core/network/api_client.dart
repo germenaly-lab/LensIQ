@@ -38,9 +38,15 @@ class ApiClient {
           ? 'super_admin'
           : user.role == UserRole.brandManager
               ? 'brand_manager'
-              : 'branch_manager';
+              : 'branch_security';
       if (user.companyId != null) {
         headers['x-company-id'] = user.companyId!;
+      }
+      if (user.brandId != null) {
+        headers['x-brand-id'] = user.brandId!;
+      }
+      if (user.branchId != null) {
+        headers['x-branch-id'] = user.branchId!;
       }
       if (user.authorizedBranchIds.isNotEmpty) {
         headers['x-authorized-branches'] = user.authorizedBranchIds.join(',');

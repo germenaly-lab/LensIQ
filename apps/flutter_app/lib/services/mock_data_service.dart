@@ -317,8 +317,8 @@ class MockDataService {
       id: 'inc-01',
       cameraId: '44444444-4444-4444-4444-444444444441',
       cameraName: 'Cashier 01',
-      brandId: '22222222-2222-2222-2222-222222222223',
-      brandName: 'Armani Exchange',
+      brandId: '22222222-2222-2222-2222-222222222222',
+      brandName: 'Ego Fashion',
       branchId: '33333333-3333-3333-3333-333333333333',
       branchName: 'Ego Mall of Arabia Branch',
       ruleType: 'cashier_empty',
@@ -383,21 +383,20 @@ class MockDataService {
     ),
     IncidentModel(
       id: 'inc-05',
-      cameraId: '44444444-4444-4444-4444-444444444442',
-      cameraName: 'Main Entrance',
+      cameraId: '44444444-4444-4444-4444-444444444447',
+      cameraName: 'Storefront Display',
       brandId: '22222222-2222-2222-2222-222222222223',
       brandName: 'Armani Exchange',
-      branchId: '33333333-3333-3333-3333-333333333333',
-      branchName: 'Ego Mall of Arabia Branch',
-      ruleType: 'footfall_spike',
-      severity: IncidentSeverity.info,
-      status: IncidentStatus.resolved,
-      title: 'Footfall Surge Detected (45 people/min)',
-      description: 'Peak customer inflow exceeding 45 persons/minute recorded at main entrance gate.',
-      timestamp: DateTime.now().subtract(const Duration(hours: 1, minutes: 15)),
-      durationSeconds: 300,
-      confidence: 0.91,
-      resolutionNote: 'Handled by floor greeters.',
+      branchId: '33333333-3333-3333-3333-333333333335',
+      branchName: 'Armani City Stars Branch',
+      ruleType: 'perimeter_breach',
+      severity: IncidentSeverity.warning,
+      status: IncidentStatus.open,
+      title: 'Armani Display Case Tamper Alert',
+      description: 'Motion detected around luxury watch showcase after mall closing.',
+      timestamp: DateTime.now().subtract(const Duration(hours: 1, minutes: 10)),
+      durationSeconds: 180,
+      confidence: 0.94,
     ),
   ];
 
@@ -570,6 +569,7 @@ class MockDataService {
   static DashboardSummary getSummaryForUser(UserProfile user) {
     final cams = getCamerasForUser(user);
     final incs = getIncidentsForUser(user);
+    final branches = getBranchesForUser(user);
     final activeIncs = incs.where((i) => i.status == IncidentStatus.open).toList();
 
     return DashboardSummary(
@@ -578,24 +578,63 @@ class MockDataService {
       offlineCameras: cams.where((c) => !c.isOnline).length,
       activeIncidents: activeIncs.length,
       criticalAlerts: incs.where((i) => i.isCritical && i.status != IncidentStatus.resolved).length,
-      totalBranches: user.isSuperAdmin ? demoBranches.length : user.authorizedBranchIds.length,
-      incidentsToday: incs.length + 7, // seed total today
+      totalBranches: branches.length,
+      incidentsToday: incs.length,
       cashierAlerts: activeIncs.where((i) => i.isCashierAlert).length,
-      networkUptimePercentage: 99.8,
+      networkUptimePercentage: cams.isEmpty
+          ? 100.0
+          : (cams.where((c) => c.isOnline).length / cams.length * 100.0),
     );
   }
 
   static List<CameraModel> getCamerasForUser(UserProfile user) {
     if (user.isSuperAdmin) return demoCameras;
     if (user.isBrandManager) {
-      return demoCameras.where((c) => c.brandId == user.brandId || user.canAccessBranch(c.branchId)).toList();
+      return demoCameras.where((c) => c.brandId == user.brandId).toList();
+    }
+    if (user.isBranchSecurity) {
+      return demoCameras.where((c) => c.branchId == user.branchId).toList();
     }
     return demoCameras.where((c) => user.canAccessBranch(c.branchId)).toList();
   }
 
   static List<IncidentModel> getIncidentsForUser(UserProfile user) {
     if (user.isSuperAdmin) return demoIncidents;
+    if (user.isBrandManager) {
+      return demoIncidents.where((i) => i.brandId == user.brandId).toList();
+    }
+    if (user.isBranchSecurity) {
+      return demoIncidents.where((i) => i.branchId == user.branchId).toList();
+    }
     return demoIncidents.where((i) => user.canAccessBranch(i.branchId)).toList();
+  }
+
+  static List<BranchModel> getBranchesForUser(UserProfile user) {
+    if (user.isSuperAdmin) return demoBranches;
+    if (user.isBrandManager) {
+      return demoBranches.where((b) => b.brandId == user.brandId).toList();
+    }
+    if (user.isBranchSecurity) {
+      return demoBranches.where((b) => b.id == user.branchId).toList();
+    }
+    return demoBranches.where((b) => user.canAccessBranch(b.id)).toList();
+  }
+
+  static List<BrandModel> getBrandsForUser(UserProfile user) {
+    if (user.isSuperAdmin) return demoBrands;
+    return demoBrands.where((b) => b.id == user.brandId).toList();
+  }
+
+  static List<AiRuleModel> getRulesForUser(UserProfile user) {
+    if (user.isSuperAdmin) return demoRules;
+    if (user.isBrandManager) {
+      final branchIds = getBranchesForUser(user).map((b) => b.id).toSet();
+      return demoRules.where((r) => branchIds.contains(r.branchId)).toList();
+    }
+    if (user.isBranchSecurity) {
+      return demoRules.where((r) => r.branchId == user.branchId).toList();
+    }
+    return demoRules.where((r) => user.canAccessBranch(r.branchId)).toList();
   }
 
   static StreamSessionModel createMockStreamSession(String cameraId, CameraSourceType sourceType) {

@@ -108,6 +108,7 @@ class CameraModel {
   bool get isOnline => status == CameraStatus.online;
   bool get isHikvision => sourceType == CameraSourceType.hikvisionP2p;
   bool get isRtsp => sourceType == CameraSourceType.rtsp;
+  String get sourceTypeDisplayName => sourceType.displayName;
 
   CameraModel copyWith({
     String? id,

@@ -284,5 +284,88 @@ void main() {
       expect(incidentProvider.activeIncidentsCount, equals(activeBefore + 1));
       expect(incidentProvider.incidents.first.id, equals(realTimeIncident.id));
     });
+
+    // ------------------------------------------------------------------------
+    // Phase 7 Tests: Role-Specific Dashboards & Permission Enforcement
+    // ------------------------------------------------------------------------
+    test('14. Brand Manager strictly sees ONLY assigned brand cameras (No other brands)', () async {
+      final brandUser = MockDataService.demoUsers.firstWhere((u) => u.role == UserRole.brandManager);
+      expect(brandUser.brandId, isNotNull);
+
+      await cameraProvider.loadCameras(brandUser);
+
+      // Must only contain cameras for assigned brand (Ego Fashion)
+      expect(cameraProvider.cameras.isNotEmpty, isTrue);
+      expect(cameraProvider.cameras.every((c) => c.brandId == brandUser.brandId), isTrue);
+
+      // Must NOT contain cameras from Armani Exchange or Acme
+      expect(cameraProvider.cameras.any((c) => c.brandName == 'Armani Exchange'), isFalse);
+      expect(cameraProvider.cameras.any((c) => c.brandName == 'Acme Pro Store'), isFalse);
+    });
+
+    test('15. Brand Manager strictly sees ONLY assigned brand incidents & branches', () async {
+      final brandUser = MockDataService.demoUsers.firstWhere((u) => u.role == UserRole.brandManager);
+      await incidentProvider.loadData(brandUser);
+
+      // Must only contain incidents for assigned brand
+      expect(incidentProvider.rawIncidents.isNotEmpty, isTrue);
+      expect(incidentProvider.rawIncidents.every((i) => i.brandId == brandUser.brandId), isTrue);
+      expect(incidentProvider.rawIncidents.any((i) => i.brandName == 'Armani Exchange'), isFalse);
+
+      // Admin provider branches must be scoped to assigned brand
+      await adminProvider.loadAllAdminData(brandUser);
+      expect(adminProvider.branches.every((b) => b.brandId == brandUser.brandId), isTrue);
+      expect(adminProvider.brands.every((b) => b.id == brandUser.brandId), isTrue);
+    });
+
+    test('16. Branch Security strictly sees ONLY assigned branch cameras (No other branches)', () async {
+      final secUser = MockDataService.demoUsers.firstWhere((u) => u.role == UserRole.branchSecurity);
+      expect(secUser.branchId, isNotNull);
+
+      await cameraProvider.loadCameras(secUser);
+
+      // Must only contain cameras for assigned branch (Mall of Arabia)
+      expect(cameraProvider.cameras.isNotEmpty, isTrue);
+      expect(cameraProvider.cameras.every((c) => c.branchId == secUser.branchId), isTrue);
+
+      // Must NOT contain cameras from CFC branch or City Stars branch
+      expect(cameraProvider.cameras.any((c) => c.name == 'Cashier 02'), isFalse);
+      expect(cameraProvider.cameras.any((c) => c.branchName?.contains('City Stars') ?? false), isFalse);
+    });
+
+    test('17. Branch Security strictly sees ONLY assigned branch incidents', () async {
+      final secUser = MockDataService.demoUsers.firstWhere((u) => u.role == UserRole.branchSecurity);
+      await incidentProvider.loadData(secUser);
+
+      // Must only contain incidents for Mall of Arabia
+      expect(incidentProvider.rawIncidents.isNotEmpty, isTrue);
+      expect(incidentProvider.rawIncidents.every((i) => i.branchId == secUser.branchId), isTrue);
+      expect(incidentProvider.rawIncidents.any((i) => i.branchName.contains('Cairo Festival')), isFalse);
+      expect(incidentProvider.rawIncidents.any((i) => i.branchName.contains('City Stars')), isFalse);
+    });
+
+    test('18. Branch Security quick-identifies critical incidents, cashier problems, and offline cameras', () async {
+      final secUser = MockDataService.demoUsers.firstWhere((u) => u.role == UserRole.branchSecurity);
+      await incidentProvider.loadData(secUser);
+      await cameraProvider.loadCameras(secUser);
+
+      final branchIncidents = incidentProvider.rawIncidents.where((i) => i.branchId == secUser.branchId).toList();
+      final branchCameras = cameraProvider.cameras.where((c) => c.branchId == secUser.branchId).toList();
+
+      // 1. Critical incidents identified
+      final criticals = branchIncidents.where((i) => i.isCritical).toList();
+      expect(criticals.isNotEmpty, isTrue);
+      expect(criticals.any((i) => i.title == 'Cashier Area Empty'), isTrue);
+
+      // 2. Cashier problems identified
+      final cashierProblems = branchIncidents.where((i) => i.isCashierAlert).toList();
+      expect(cashierProblems.isNotEmpty, isTrue);
+      expect(cashierProblems.first.ruleType, equals('cashier_empty'));
+
+      // 3. Offline or Warning cameras identified
+      final warningOrOffline = branchCameras.where((c) => !c.isOnline || c.status == CameraStatus.warning).toList();
+      expect(warningOrOffline.isNotEmpty, isTrue);
+      expect(warningOrOffline.first.name, equals('Backstore & Loading Dock'));
+    });
   });
 }

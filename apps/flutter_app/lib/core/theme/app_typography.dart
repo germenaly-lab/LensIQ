@@ -50,6 +50,8 @@ class AppTypography {
     height: 1.3,
   );
 
+  static const TextStyle bodySmall = bodySecondary;
+
   // Captions & Labels
   static const TextStyle caption = TextStyle(
     fontSize: 12,

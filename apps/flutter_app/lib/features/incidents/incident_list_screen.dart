@@ -90,34 +90,62 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        DropdownButton<String?>(
-                          value: incidentProv.filterBrand,
-                          underline: const SizedBox.shrink(),
-                          dropdownColor: AppColors.surface,
-                          style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-                          hint: const Text('All Brands', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                          items: const [
-                            DropdownMenuItem(value: null, child: Text('All Brands')),
-                            DropdownMenuItem(value: 'Ego', child: Text('Ego Fashion')),
-                            DropdownMenuItem(value: 'Armani', child: Text('Armani Exchange')),
-                          ],
-                          onChanged: (val) => incidentProv.setFilterBrand(val),
-                        ),
-                        const SizedBox(width: 12),
-                        DropdownButton<String?>(
-                          value: incidentProv.filterBranch,
-                          underline: const SizedBox.shrink(),
-                          dropdownColor: AppColors.surface,
-                          style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-                          hint: const Text('All Branches', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                          items: const [
-                            DropdownMenuItem(value: null, child: Text('All Branches')),
-                            DropdownMenuItem(value: 'Mall of Arabia', child: Text('Mall of Arabia')),
-                            DropdownMenuItem(value: 'Cairo Festival', child: Text('Cairo Festival City')),
-                            DropdownMenuItem(value: 'City Stars', child: Text('City Stars')),
-                          ],
-                          onChanged: (val) => incidentProv.setFilterBranch(val),
-                        ),
+                        if (user.isSuperAdmin) ...[
+                          DropdownButton<String?>(
+                            value: incidentProv.filterBrand,
+                            underline: const SizedBox.shrink(),
+                            dropdownColor: AppColors.surface,
+                            style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                            hint: const Text('All Brands', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                            items: const [
+                              DropdownMenuItem(value: null, child: Text('All Brands')),
+                              DropdownMenuItem(value: 'Ego', child: Text('Ego Fashion')),
+                              DropdownMenuItem(value: 'Armani', child: Text('Armani Exchange')),
+                            ],
+                            onChanged: (val) => incidentProv.setFilterBrand(val),
+                          ),
+                          const SizedBox(width: 12),
+                        ] else if (user.isBrandManager) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(user.brandName ?? 'Brand', style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        if (!user.isBranchSecurity)
+                          DropdownButton<String?>(
+                            value: incidentProv.filterBranch,
+                            underline: const SizedBox.shrink(),
+                            dropdownColor: AppColors.surface,
+                            style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                            hint: const Text('All Branches', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                            items: user.isBrandManager
+                                ? const [
+                                    DropdownMenuItem(value: null, child: Text('All Brand Branches')),
+                                    DropdownMenuItem(value: 'Mall of Arabia', child: Text('Mall of Arabia')),
+                                    DropdownMenuItem(value: 'Cairo Festival', child: Text('Cairo Festival City')),
+                                  ]
+                                : const [
+                                    DropdownMenuItem(value: null, child: Text('All Branches')),
+                                    DropdownMenuItem(value: 'Mall of Arabia', child: Text('Mall of Arabia')),
+                                    DropdownMenuItem(value: 'Cairo Festival', child: Text('Cairo Festival City')),
+                                    DropdownMenuItem(value: 'City Stars', child: Text('City Stars')),
+                                  ],
+                            onChanged: (val) => incidentProv.setFilterBranch(val),
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(user.branchName ?? 'Assigned Branch', style: const TextStyle(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
                       ],
                     ),
                     const Divider(height: 20),

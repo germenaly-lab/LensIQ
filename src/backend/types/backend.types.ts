@@ -31,7 +31,9 @@ export interface StreamSessionDescriptor {
 
 export interface AuthenticatedUser {
   id: string;
-  role: 'super_admin' | 'company_admin' | 'branch_manager' | 'viewer';
+  role: 'super_admin' | 'company_admin' | 'brand_manager' | 'branch_manager' | 'branch_security' | 'viewer';
   companyId?: string;
+  brandId?: string;
+  branchId?: string;
   authorizedBranchIds: string[];
 }

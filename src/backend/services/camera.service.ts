@@ -18,12 +18,37 @@ export class CameraService {
   }
 
   /**
-   * Check if a user has access to a specific branch
+   * Check if a user has access to a specific branch/brand
    */
-  hasBranchAccess(user: AuthenticatedUser, branchId: string, companyId: string): boolean {
+  hasBranchAccess(user: AuthenticatedUser, branchId: string, companyId: string, brandId?: string): boolean {
     if (user.role === 'super_admin') return true;
     if (user.role === 'company_admin') return user.companyId === companyId;
+    if (user.role === 'brand_manager') {
+      if (user.brandId && brandId && user.brandId !== brandId) return false;
+      return user.authorizedBranchIds.includes(branchId);
+    }
+    if (user.role === 'branch_security') {
+      if (user.branchId && user.branchId !== branchId) return false;
+      return user.authorizedBranchIds.includes(branchId);
+    }
     return user.authorizedBranchIds.includes(branchId);
+  }
+
+  /**
+   * Check if a user has access to a specific camera
+   */
+  hasCameraAccess(user: AuthenticatedUser, camera: Camera): boolean {
+    if (user.role === 'super_admin') return true;
+    if (user.role === 'company_admin') return user.companyId === camera.company_id;
+    if (user.role === 'brand_manager') {
+      if (!user.brandId) return false;
+      return user.brandId === camera.brand_id;
+    }
+    if (user.role === 'branch_security') {
+      if (user.branchId && user.branchId === camera.branch_id) return true;
+      return user.authorizedBranchIds.includes(camera.branch_id);
+    }
+    return user.authorizedBranchIds.includes(camera.branch_id);
   }
 
   /**
@@ -36,7 +61,7 @@ export class CameraService {
     let result = Array.from(this.cameras.values());
 
     // Apply authorization boundaries
-    result = result.filter((cam) => this.hasBranchAccess(user, cam.branch_id, cam.company_id));
+    result = result.filter((cam) => this.hasCameraAccess(user, cam));
 
     // Optional query filters
     if (filters?.companyId) {
@@ -61,7 +86,7 @@ export class CameraService {
       throw new Error(`Camera not found with ID '${id}'`);
     }
 
-    if (!this.hasBranchAccess(user, camera.branch_id, camera.company_id)) {
+    if (!this.hasCameraAccess(user, camera)) {
       throw new Error('Unauthorized: You do not have permission to access this camera.');
     }
 
@@ -77,7 +102,7 @@ export class CameraService {
       throw new Error(`Camera not found with ID '${id}'`);
     }
 
-    if (!this.hasBranchAccess(user, camera.branch_id, camera.company_id)) {
+    if (!this.hasCameraAccess(user, camera)) {
       throw new Error('Unauthorized: You do not have permission to access this camera.');
     }
 
@@ -105,7 +130,11 @@ export class CameraService {
       stream_profile?: 'main' | 'sub';
     }
   ): Promise<SafeCameraDTO> {
-    if (!this.hasBranchAccess(user, data.branch_id, data.company_id)) {
+    if (user.role === 'branch_security') {
+      throw new Error('Unauthorized: Branch security staff cannot create cameras.');
+    }
+
+    if (!this.hasBranchAccess(user, data.branch_id, data.company_id, data.brand_id)) {
       throw new Error('Unauthorized: You cannot create cameras in this branch.');
     }
 
@@ -159,7 +188,11 @@ export class CameraService {
       throw new Error(`Camera not found with ID '${id}'`);
     }
 
-    if (!this.hasBranchAccess(user, camera.branch_id, camera.company_id)) {
+    if (user.role === 'branch_security') {
+      throw new Error('Unauthorized: Branch security staff cannot delete cameras.');
+    }
+
+    if (!this.hasCameraAccess(user, camera)) {
       throw new Error('Unauthorized: You do not have permission to delete this camera.');
     }
 

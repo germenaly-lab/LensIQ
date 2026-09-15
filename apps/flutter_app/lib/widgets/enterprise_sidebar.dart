@@ -50,7 +50,7 @@ class EnterpriseSidebar extends StatelessWidget {
       title: 'Brands',
       icon: Icons.store_mall_directory_outlined,
       route: '/brands',
-      allowedRoles: [UserRole.superAdmin, UserRole.brandManager],
+      allowedRoles: [UserRole.superAdmin],
     ),
     NavItem(
       title: 'Branches',
