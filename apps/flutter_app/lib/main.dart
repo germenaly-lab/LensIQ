@@ -45,9 +45,9 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AppLocaleProvider(prefs)),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider(authRepo)),
-        ChangeNotifierProvider(create: (_) => CameraProvider(cameraRepo)),
+        ChangeNotifierProvider(create: (_) => CameraProvider(cameraRepo, prefs)),
         ChangeNotifierProvider(create: (_) => IncidentProvider(incidentRepo)),
-        ChangeNotifierProvider(create: (_) => AdminProvider()),
+        ChangeNotifierProvider(create: (_) => AdminProvider(prefs)),
         ChangeNotifierProvider(
           create: (_) => NotificationProvider(notificationRepo, fcmService),
         ),

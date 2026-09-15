@@ -9,6 +9,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/language_toggle_button.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
 
@@ -20,6 +22,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController(text: 'admin@lensiq.cloud');
   final _passwordController = TextEditingController(text: 'password123');
   final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      final customPass = prefs.getString('lensiq_admin_password');
+      if (customPass != null && mounted) {
+        setState(() {
+          _passwordController.text = customPass;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {

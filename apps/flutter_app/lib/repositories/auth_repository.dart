@@ -14,5 +14,13 @@ class AuthRepository {
   Future<UserProfile> switchDemoRole(UserRole role) =>
       _authService.switchDemoRole(role);
 
+  Future<bool> changePassword(String currentPassword, String newPassword) =>
+      _authService.changePassword(currentPassword, newPassword);
+
+  Future<void> registerUser(UserProfile profile, String password) =>
+      _authService.registerCustomUser(profile, password);
+
+  List<UserProfile> getCustomUsers() => _authService.getCustomUsers();
+
   Future<void> logout() => _authService.logout();
 }

@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/camera.dart';
 import '../models/user_profile.dart';
 import '../models/stream_session.dart';
@@ -32,6 +34,7 @@ enum LiveStreamState {
 
 class CameraProvider extends ChangeNotifier {
   final CameraRepository _repository;
+  final SharedPreferences? _prefs;
 
   List<CameraModel> _cameras = [];
   CameraSourceType? _filterSource;
@@ -52,7 +55,7 @@ class CameraProvider extends ChangeNotifier {
   String? _healthBranchFilter;
   CameraStatus? _healthStatusFilter;
 
-  CameraProvider(this._repository);
+  CameraProvider(this._repository, [this._prefs]);
 
   List<CameraModel> get allCameras => _cameras;
   int get gridLayout => _gridLayout;
@@ -183,6 +186,19 @@ class CameraProvider extends ChangeNotifier {
 
     try {
       _cameras = await _repository.getCameras(user);
+      if (_prefs != null && _prefs!.containsKey('lensiq_custom_cameras')) {
+        try {
+          final raw = _prefs!.getString('lensiq_custom_cameras')!;
+          final customList = (jsonDecode(raw) as List)
+              .map((c) => CameraModel.fromJson(c as Map<String, dynamic>))
+              .toList();
+          for (final cam in customList) {
+            if (!_cameras.any((c) => c.id == cam.id)) {
+              _cameras.insert(0, cam);
+            }
+          }
+        } catch (_) {}
+      }
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -283,6 +299,14 @@ class CameraProvider extends ChangeNotifier {
 
   Future<void> addCamera(UserProfile user, CameraModel newCam) async {
     _cameras.insert(0, newCam);
+    if (_prefs != null) {
+      try {
+        final existingRaw = _prefs!.getString('lensiq_custom_cameras');
+        List<dynamic> list = existingRaw != null ? jsonDecode(existingRaw) as List : [];
+        list.insert(0, newCam.toJson());
+        _prefs!.setString('lensiq_custom_cameras', jsonEncode(list));
+      } catch (_) {}
+    }
     notifyListeners();
 
     try {

@@ -311,9 +311,17 @@ class AppLocaleProvider extends ChangeNotifier {
     'Email Alerts': 'إشعارات البريد الإلكتروني للمديرين',
     'Stream Quality': 'جودة بث الكاميرات',
     'High Definition (1080p)': 'دقة عالية (1080p)',
-    'Standard (720p)': 'دقة قياسية (720p)',
     'Save Preferences': 'حفظ التفضيلات',
     'Preferences saved': 'تم حفظ التفضيلات بنجاح',
+    'Account Security & Password': 'أمان الحساب وكلمة المرور',
+    'Current Password': 'كلمة المرور الحالية',
+    'New Password': 'كلمة المرور الجديدة',
+    'Confirm New Password': 'تأكيد كلمة المرور الجديدة',
+    'Update Password': 'تحديث كلمة المرور',
+    'Password updated successfully!': 'تم تحديث كلمة المرور بنجاح!',
+    'Please fill in all password fields': 'يرجى ملء جميع حقول كلمة المرور',
+    'New passwords do not match': 'كلمتا المرور غير متطابقتين',
+    'Password must be at least 6 characters': 'يجب ألا تقل كلمة المرور عن 6 أحرف',
 
     // Notifications Panel & Header
     'Alerts & Notifications': 'التنبيهات والإشعارات الأمنية',

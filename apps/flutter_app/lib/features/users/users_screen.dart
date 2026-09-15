@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/localization/app_locale_provider.dart';
 import '../../models/user_profile.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/mock_data_service.dart';
 import '../../widgets/responsive_scaffold.dart';
 
@@ -22,6 +24,16 @@ class _UsersScreenState extends State<UsersScreen> {
   void initState() {
     super.initState();
     _users = List.from(MockDataService.demoUsers);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final custom = context.read<AuthProvider>().getCustomUsers();
+      for (final u in custom) {
+        if (!_users.any((x) => x.email.toLowerCase() == u.email.toLowerCase())) {
+          setState(() {
+            _users.insert(0, u);
+          });
+        }
+      }
+    });
   }
 
   @override
@@ -210,6 +222,7 @@ class _UsersScreenState extends State<UsersScreen> {
     final colors = context.colors;
     final nameCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController(text: 'password123');
     UserRole selectedRole = UserRole.branchSecurity;
 
     showDialog(
@@ -245,6 +258,17 @@ class _UsersScreenState extends State<UsersScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                TextField(
+                  controller: passwordCtrl,
+                  obscureText: true,
+                  style: TextStyle(color: colors.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: context.tr('Password'),
+                    hintText: 'Default: password123',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 DropdownButtonFormField<UserRole>(
                   value: selectedRole,
                   decoration: InputDecoration(
@@ -272,25 +296,24 @@ class _UsersScreenState extends State<UsersScreen> {
             ElevatedButton(
               onPressed: () {
                 if (nameCtrl.text.trim().isEmpty || emailCtrl.text.trim().isEmpty) return;
+                final newUser = UserProfile(
+                  id: 'usr-${DateTime.now().millisecondsSinceEpoch}',
+                  email: emailCtrl.text.trim(),
+                  fullName: nameCtrl.text.trim(),
+                  role: selectedRole,
+                  companyId: 'comp-1',
+                  companyName: 'Ego Retail Holding',
+                  brandId: selectedRole == UserRole.brandManager ? 'brand-1' : null,
+                  brandName: selectedRole == UserRole.brandManager ? 'Ego Fashion' : null,
+                  branchId: selectedRole == UserRole.branchSecurity ? 'branch-1' : null,
+                  branchName: selectedRole == UserRole.branchSecurity ? 'Mall of Arabia' : null,
+                  authorizedBranchIds: selectedRole == UserRole.superAdmin
+                      ? ['branch-1', 'branch-2', 'branch-3']
+                      : ['branch-1'],
+                );
+                context.read<AuthProvider>().registerUser(newUser, passwordCtrl.text.trim());
                 setState(() {
-                  _users.insert(
-                    0,
-                    UserProfile(
-                      id: 'usr-${DateTime.now().millisecondsSinceEpoch}',
-                      email: emailCtrl.text.trim(),
-                      fullName: nameCtrl.text.trim(),
-                      role: selectedRole,
-                      companyId: 'comp-1',
-                      companyName: 'Ego Retail Holding',
-                      brandId: selectedRole == UserRole.brandManager ? 'brand-1' : null,
-                      brandName: selectedRole == UserRole.brandManager ? 'Ego Fashion' : null,
-                      branchId: selectedRole == UserRole.branchSecurity ? 'branch-1' : null,
-                      branchName: selectedRole == UserRole.branchSecurity ? 'Mall of Arabia' : null,
-                      authorizedBranchIds: selectedRole == UserRole.superAdmin
-                          ? ['branch-1', 'branch-2', 'branch-3']
-                          : ['branch-1'],
-                    ),
-                  );
+                  _users.insert(0, newUser);
                 });
                 Navigator.of(dialogCtx).pop();
               },
@@ -298,7 +321,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 backgroundColor: colors.primary,
                 foregroundColor: Colors.white,
               ),
-              child: Text(context.tr('Add User')),
+              child: Text(context.tr('Save')),
             ),
           ],
         ),

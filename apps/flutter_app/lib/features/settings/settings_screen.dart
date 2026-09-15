@@ -23,6 +23,10 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _backendUrlController;
+  final _currentPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _isChangingPassword = false;
 
   @override
   void initState() {
@@ -33,6 +37,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _backendUrlController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -45,6 +52,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: colors.success,
       ),
     );
+  }
+
+  void _changePassword() async {
+    final curr = _currentPasswordController.text.trim();
+    final newPass = _newPasswordController.text.trim();
+    final confirm = _confirmPasswordController.text.trim();
+
+    if (curr.isEmpty || newPass.isEmpty || confirm.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr('Please fill in all password fields')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (newPass != confirm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr('New passwords do not match')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (newPass.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr('Password must be at least 6 characters')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isChangingPassword = true);
+    final auth = context.read<AuthProvider>();
+    final success = await auth.changePassword(curr, newPass);
+    setState(() => _isChangingPassword = false);
+
+    if (success) {
+      _currentPasswordController.clear();
+      _newPasswordController.clear();
+      _confirmPasswordController.clear();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr('Password updated successfully!')),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.errorMessage ?? 'Failed to update password'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   @override
@@ -93,7 +162,104 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // 2. Gateway & API Configuration
+                // 2. Account Security & Password Card
+                _buildCard(
+                  colors: colors,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.lock_reset, size: 20, color: colors.primary),
+                          const SizedBox(width: 8),
+                          Text(context.tr('Account Security & Password'), style: AppTypography.h3Of(context)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        context.tr('Update your account password securely. Changes persist across sessions.'),
+                        style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _currentPasswordController,
+                        obscureText: true,
+                        style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                        decoration: InputDecoration(
+                          labelText: context.tr('Current Password'),
+                          prefixIcon: Icon(Icons.lock_outline, size: 18, color: colors.textSecondary),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: colors.border),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _newPasswordController,
+                              obscureText: true,
+                              style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                              decoration: InputDecoration(
+                                labelText: context.tr('New Password'),
+                                prefixIcon: Icon(Icons.vpn_key_outlined, size: 18, color: colors.textSecondary),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: colors.border),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _confirmPasswordController,
+                              obscureText: true,
+                              style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                              decoration: InputDecoration(
+                                labelText: context.tr('Confirm New Password'),
+                                prefixIcon: Icon(Icons.check_circle_outline, size: 18, color: colors.textSecondary),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: colors.border),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: ElevatedButton.icon(
+                          onPressed: _isChangingPassword ? null : _changePassword,
+                          icon: _isChangingPassword
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Icon(Icons.check, size: 16),
+                          label: Text(context.tr('Update Password')),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // 3. Gateway & API Configuration
                 _buildCard(
                   colors: colors,
                   child: Column(

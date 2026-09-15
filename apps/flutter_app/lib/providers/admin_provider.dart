@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/company.dart';
 import '../models/brand.dart';
 import '../models/branch.dart';
@@ -10,6 +12,8 @@ import '../models/user_profile.dart';
 import '../services/mock_data_service.dart';
 
 class AdminProvider extends ChangeNotifier {
+  final SharedPreferences? _prefs;
+
   List<CompanyModel> _companies = [];
   List<BrandModel> _brands = [];
   List<BranchModel> _branches = [];
@@ -24,7 +28,7 @@ class AdminProvider extends ChangeNotifier {
   Timer? _realtimeHeartbeat;
   bool _realtimeConnected = true;
 
-  AdminProvider() {
+  AdminProvider([this._prefs]) {
     loadAllAdminData();
     _startRealtimeListener();
   }
@@ -57,19 +61,44 @@ class AdminProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (user != null) {
-        _companies = user.isSuperAdmin
-            ? List.from(MockDataService.demoCompanies)
-            : MockDataService.demoCompanies.where((c) => c.id == user.companyId).toList();
-        _brands = MockDataService.getBrandsForUser(user);
-        _branches = MockDataService.getBranchesForUser(user);
-        _rules = MockDataService.getRulesForUser(user);
+      // 1. Companies
+      if (_prefs != null && _prefs!.containsKey('lensiq_companies')) {
+        final raw = _prefs!.getString('lensiq_companies')!;
+        final list = (jsonDecode(raw) as List).map((i) => CompanyModel.fromJson(i as Map<String, dynamic>)).toList();
+        _companies = list;
       } else {
-        _companies = List.from(MockDataService.demoCompanies);
-        _brands = List.from(MockDataService.demoBrands);
-        _branches = List.from(MockDataService.demoBranches);
-        _rules = List.from(MockDataService.demoRules);
+        _companies = (user != null && !user.isSuperAdmin)
+            ? MockDataService.demoCompanies.where((c) => c.id == user.companyId).toList()
+            : List.from(MockDataService.demoCompanies);
       }
+
+      // 2. Brands
+      if (_prefs != null && _prefs!.containsKey('lensiq_brands')) {
+        final raw = _prefs!.getString('lensiq_brands')!;
+        final list = (jsonDecode(raw) as List).map((i) => BrandModel.fromJson(i as Map<String, dynamic>)).toList();
+        _brands = list;
+      } else {
+        _brands = user != null ? MockDataService.getBrandsForUser(user) : List.from(MockDataService.demoBrands);
+      }
+
+      // 3. Branches
+      if (_prefs != null && _prefs!.containsKey('lensiq_branches')) {
+        final raw = _prefs!.getString('lensiq_branches')!;
+        final list = (jsonDecode(raw) as List).map((i) => BranchModel.fromJson(i as Map<String, dynamic>)).toList();
+        _branches = list;
+      } else {
+        _branches = user != null ? MockDataService.getBranchesForUser(user) : List.from(MockDataService.demoBranches);
+      }
+
+      // 4. AI Rules
+      if (_prefs != null && _prefs!.containsKey('lensiq_rules')) {
+        final raw = _prefs!.getString('lensiq_rules')!;
+        final list = (jsonDecode(raw) as List).map((i) => AiRuleModel.fromJson(i as Map<String, dynamic>)).toList();
+        _rules = list;
+      } else {
+        _rules = user != null ? MockDataService.getRulesForUser(user) : List.from(MockDataService.demoRules);
+      }
+
       _auditLogs = List.from(MockDataService.demoAuditLogs);
       _rois = List.from(MockDataService.demoRois);
     } catch (e) {
@@ -78,6 +107,30 @@ class AdminProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void _persistCompanies() {
+    if (_prefs == null) return;
+    final data = jsonEncode(_companies.map((c) => c.toJson()).toList());
+    _prefs!.setString('lensiq_companies', data);
+  }
+
+  void _persistBrands() {
+    if (_prefs == null) return;
+    final data = jsonEncode(_brands.map((b) => b.toJson()).toList());
+    _prefs!.setString('lensiq_brands', data);
+  }
+
+  void _persistBranches() {
+    if (_prefs == null) return;
+    final data = jsonEncode(_branches.map((b) => b.toJson()).toList());
+    _prefs!.setString('lensiq_branches', data);
+  }
+
+  void _persistRules() {
+    if (_prefs == null) return;
+    final data = jsonEncode(_rules.map((r) => r.toJson()).toList());
+    _prefs!.setString('lensiq_rules', data);
   }
 
   void _startRealtimeListener() {
@@ -92,6 +145,7 @@ class AdminProvider extends ChangeNotifier {
   // --- Rule Management ---
   void addRule(AiRuleModel rule) {
     _rules.insert(0, rule);
+    _persistRules();
     _recordAudit(
       action: 'AI Rule created',
       actorName: 'Alex Vance (Super Admin)',
@@ -106,6 +160,7 @@ class AdminProvider extends ChangeNotifier {
     final idx = _rules.indexWhere((r) => r.id == rule.id);
     if (idx != -1) {
       _rules[idx] = rule;
+      _persistRules();
       _recordAudit(
         action: 'AI Rule updated',
         actorName: 'Alex Vance (Super Admin)',
@@ -122,6 +177,7 @@ class AdminProvider extends ChangeNotifier {
     if (idx != -1) {
       final updated = _rules[idx].copyWith(enabled: !_rules[idx].enabled);
       _rules[idx] = updated;
+      _persistRules();
       _recordAudit(
         action: updated.enabled ? 'AI Rule enabled' : 'AI Rule disabled',
         actorName: 'Alex Vance (Super Admin)',
@@ -162,6 +218,7 @@ class AdminProvider extends ChangeNotifier {
   // --- Company Management ---
   void addCompany(CompanyModel company) {
     _companies.insert(0, company);
+    _persistCompanies();
     _recordAudit(
       action: 'Company created',
       actorName: 'Alex Vance (Super Admin)',
@@ -176,6 +233,7 @@ class AdminProvider extends ChangeNotifier {
     final idx = _companies.indexWhere((c) => c.id == company.id);
     if (idx != -1) {
       _companies[idx] = company;
+      _persistCompanies();
       _recordAudit(
         action: 'Company updated',
         actorName: 'Alex Vance (Super Admin)',
@@ -190,6 +248,7 @@ class AdminProvider extends ChangeNotifier {
   void deleteCompany(String companyId) {
     final company = _companies.firstWhere((c) => c.id == companyId, orElse: () => _companies.first);
     _companies.removeWhere((c) => c.id == companyId);
+    _persistCompanies();
     _recordAudit(
       action: 'Company deleted',
       actorName: 'Alex Vance (Super Admin)',
@@ -203,6 +262,7 @@ class AdminProvider extends ChangeNotifier {
   // --- Brand Management ---
   void addBrand(BrandModel brand) {
     _brands.insert(0, brand);
+    _persistBrands();
     _recordAudit(
       action: 'Brand created',
       actorName: 'Alex Vance (Super Admin)',
@@ -217,6 +277,7 @@ class AdminProvider extends ChangeNotifier {
     final idx = _brands.indexWhere((b) => b.id == brand.id);
     if (idx != -1) {
       _brands[idx] = brand;
+      _persistBrands();
       _recordAudit(
         action: 'Brand updated',
         actorName: 'Alex Vance (Super Admin)',
@@ -231,6 +292,7 @@ class AdminProvider extends ChangeNotifier {
   void deleteBrand(String brandId) {
     final brand = _brands.firstWhere((b) => b.id == brandId, orElse: () => _brands.first);
     _brands.removeWhere((b) => b.id == brandId);
+    _persistBrands();
     _recordAudit(
       action: 'Brand deleted',
       actorName: 'Alex Vance (Super Admin)',
@@ -244,6 +306,7 @@ class AdminProvider extends ChangeNotifier {
   // --- Branch Management ---
   void addBranch(BranchModel branch) {
     _branches.insert(0, branch);
+    _persistBranches();
     _recordAudit(
       action: 'Branch created',
       actorName: 'Alex Vance (Super Admin)',
@@ -258,6 +321,7 @@ class AdminProvider extends ChangeNotifier {
     final idx = _branches.indexWhere((b) => b.id == branch.id);
     if (idx != -1) {
       _branches[idx] = branch;
+      _persistBranches();
       _recordAudit(
         action: 'Branch updated',
         actorName: 'Alex Vance (Super Admin)',
@@ -272,6 +336,7 @@ class AdminProvider extends ChangeNotifier {
   void deleteBranch(String branchId) {
     final branch = _branches.firstWhere((b) => b.id == branchId, orElse: () => _branches.first);
     _branches.removeWhere((b) => b.id == branchId);
+    _persistBranches();
     _recordAudit(
       action: 'Branch deleted',
       actorName: 'Alex Vance (Super Admin)',
