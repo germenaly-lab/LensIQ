@@ -16,7 +16,9 @@ import 'package:lensiq_app/providers/camera_provider.dart';
 import 'package:lensiq_app/providers/incident_provider.dart';
 import 'package:lensiq_app/providers/admin_provider.dart';
 import 'package:lensiq_app/providers/theme_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:lensiq_app/widgets/status_badge.dart';
+import 'package:lensiq_app/features/cameras/widgets/live_camera_player_widget.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -366,6 +368,158 @@ void main() {
       final warningOrOffline = branchCameras.where((c) => !c.isOnline || c.status == CameraStatus.warning).toList();
       expect(warningOrOffline.isNotEmpty, isTrue);
       expect(warningOrOffline.first.name, equals('Backstore & Loading Dock'));
+    });
+
+    // ------------------------------------------------------------------------
+    // Phase 8: Live Cameras with RTSP and Hikvision P2P Tests
+    // ------------------------------------------------------------------------
+    test('19. Phase 8: RTSP camera live view starts session without exposing credentials', () async {
+      final user = MockDataService.demoUsers.first;
+      await cameraProvider.loadCameras(user);
+      final rtspCam = cameraProvider.cameras.firstWhere((c) => c.isRtsp && c.isOnline);
+
+      await cameraProvider.startCameraStream(user, rtspCam.id);
+      expect(cameraProvider.getStreamState(rtspCam.id), equals(LiveStreamState.online));
+
+      final session = cameraProvider.getActiveSessionForCamera(rtspCam.id);
+      expect(session, isNotNull);
+      expect(session!.protocol, equals('webrtc'));
+      // Verify zero exposure of passwords or raw credentials in stream URL
+      expect(session.streamUrl.contains('password'), isFalse);
+      expect(session.streamUrl.contains('secret'), isFalse);
+    });
+
+    test('20. Phase 8: Hikvision P2P camera live view starts session via P2P adapter', () async {
+      final user = MockDataService.demoUsers.first;
+      await cameraProvider.loadCameras(user);
+      final hikCam = cameraProvider.cameras.firstWhere((c) => c.isHikvision && c.isOnline);
+
+      await cameraProvider.startCameraStream(user, hikCam.id);
+      expect(cameraProvider.getStreamState(hikCam.id), equals(LiveStreamState.online));
+
+      final session = cameraProvider.getActiveSessionForCamera(hikCam.id);
+      expect(session, isNotNull);
+      expect(session!.protocol, equals('webrtc'));
+      expect(hikCam.sourceTypeDisplayName, equals('Hikvision P2P'));
+      // Zero exposure of app key or secret
+      expect(session.streamUrl.contains('appKey'), isFalse);
+      expect(session.streamUrl.contains('appSecret'), isFalse);
+    });
+
+    test('21. Phase 8: Multi-camera grid layout switching (1, 4, 9 layouts)', () {
+      expect(cameraProvider.gridLayout, equals(4)); // default is 4
+
+      cameraProvider.setGridLayout(1);
+      expect(cameraProvider.gridLayout, equals(1));
+
+      cameraProvider.setGridLayout(9);
+      expect(cameraProvider.gridLayout, equals(9));
+
+      cameraProvider.setGridLayout(4);
+      expect(cameraProvider.gridLayout, equals(4));
+    });
+
+    test('22. Phase 8: Offline camera handling sets offline state without launching stream', () async {
+      final user = MockDataService.demoUsers.first;
+      await cameraProvider.loadCameras(user);
+      final offlineCam = cameraProvider.cameras.firstWhere((c) => !c.isOnline);
+
+      await cameraProvider.startCameraStream(user, offlineCam.id);
+      expect(cameraProvider.getStreamState(offlineCam.id), equals(LiveStreamState.offline));
+      expect(cameraProvider.getActiveSessionForCamera(offlineCam.id), isNull);
+    });
+
+    test('23. Phase 8: Reconnect on stream failure refreshes session seamlessly', () async {
+      final user = MockDataService.demoUsers.first;
+      await cameraProvider.loadCameras(user);
+      final cam = cameraProvider.cameras.firstWhere((c) => c.isOnline);
+
+      await cameraProvider.startCameraStream(user, cam.id);
+      expect(cameraProvider.getStreamState(cam.id), equals(LiveStreamState.online));
+
+      await cameraProvider.reconnectCameraStream(user, cam.id);
+      expect(cameraProvider.getStreamState(cam.id), equals(LiveStreamState.online));
+      expect(cameraProvider.getActiveSessionForCamera(cam.id), isNotNull);
+    });
+
+    test('24. Phase 8: Stream release and lifecycle optimization when user leaves screen', () async {
+      final user = MockDataService.demoUsers.first;
+      await cameraProvider.loadCameras(user);
+      final cam1 = cameraProvider.cameras[0];
+      final cam2 = cameraProvider.cameras[1];
+
+      await cameraProvider.startCameraStream(user, cam1.id);
+      await cameraProvider.startCameraStream(user, cam2.id);
+      expect(cameraProvider.activeSessions.length, equals(2));
+
+      // Stop cam1 session (e.g. user scrolled past or left screen)
+      await cameraProvider.stopCameraStream(user, cam1.id);
+      expect(cameraProvider.activeSessions.containsKey(cam1.id), isFalse);
+      expect(cameraProvider.activeSessions.containsKey(cam2.id), isTrue);
+
+      // Stop all streams on exit
+      cameraProvider.stopAllStreams(user);
+      expect(cameraProvider.activeSessions.isEmpty, isTrue);
+    });
+
+    test('25. Phase 8: Cashier Empty Rule AI simulation triggers 180s incident and resets on return', () async {
+      final user = MockDataService.demoUsers.first;
+      await incidentProvider.loadData(user);
+      final initialCount = incidentProvider.rawIncidents.length;
+
+      // Simulate 180s continuous cashier empty event
+      final simulatedIncident = IncidentModel(
+        id: 'inc_test_cashier_180s',
+        cameraId: '44444444-4444-4444-4444-444444444441',
+        cameraName: 'Cashier 01',
+        brandName: 'Armani Exchange',
+        branchId: '33333333-3333-3333-3333-333333333331',
+        branchName: 'Mall of Arabia',
+        ruleType: 'cashier_empty',
+        severity: IncidentSeverity.critical,
+        status: IncidentStatus.open,
+        title: 'Cashier Area Empty',
+        description: 'Cashier counter unattended for 3 continuous minutes (180s) on Cashier 01.',
+        timestamp: DateTime.now(),
+        durationSeconds: 180,
+        confidence: 0.98,
+      );
+
+      incidentProvider.addRealtimeIncident(simulatedIncident);
+      expect(incidentProvider.rawIncidents.length, equals(initialCount + 1));
+      expect(incidentProvider.rawIncidents.first.id, equals('inc_test_cashier_180s'));
+      expect(incidentProvider.rawIncidents.first.isCritical, isTrue);
+      expect(incidentProvider.rawIncidents.first.durationSeconds, equals(180));
+    });
+
+    testWidgets('26. Phase 8: LiveCameraPlayerWidget mounts and renders stream HUD correctly', (WidgetTester tester) async {
+      final user = MockDataService.demoUsers.first;
+      await authProvider.login('admin@lensiq.cloud', 'password123');
+      await cameraProvider.loadCameras(user);
+      final cam = cameraProvider.cameras.firstWhere((c) => c.isOnline);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+            ChangeNotifierProvider<CameraProvider>.value(value: cameraProvider),
+            ChangeNotifierProvider<IncidentProvider>.value(value: incidentProvider),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 600,
+                height: 400,
+                child: LiveCameraPlayerWidget(camera: cam),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      expect(find.byType(LiveCameraPlayerWidget), findsOneWidget);
+      expect(find.text(cam.name), findsOneWidget);
     });
   });
 }

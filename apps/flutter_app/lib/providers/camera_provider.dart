@@ -4,6 +4,32 @@ import '../models/user_profile.dart';
 import '../models/stream_session.dart';
 import '../repositories/camera_repository.dart';
 
+enum LiveStreamState {
+  connecting,
+  online,
+  offline,
+  reconnecting,
+  streamError,
+  deviceUnavailable;
+
+  String get displayName {
+    switch (this) {
+      case LiveStreamState.connecting:
+        return 'Connecting';
+      case LiveStreamState.online:
+        return 'Online';
+      case LiveStreamState.offline:
+        return 'Offline';
+      case LiveStreamState.reconnecting:
+        return 'Reconnecting';
+      case LiveStreamState.streamError:
+        return 'Stream Error';
+      case LiveStreamState.deviceUnavailable:
+        return 'Device Unavailable';
+    }
+  }
+}
+
 class CameraProvider extends ChangeNotifier {
   final CameraRepository _repository;
 
@@ -15,6 +41,12 @@ class CameraProvider extends ChangeNotifier {
   StreamSessionModel? _activeSession;
   bool _isStreamingLoading = false;
 
+  // Multi-session tracking for 1, 4, and 9 camera layouts
+  final Map<String, StreamSessionModel> _activeSessions = {};
+  final Map<String, LiveStreamState> _streamStates = {};
+  int _gridLayout = 4; // 1, 4, or 9 cameras
+  bool _demoSimulationMode = true;
+
   // Health section filters
   String? _healthBrandFilter;
   String? _healthBranchFilter;
@@ -23,6 +55,47 @@ class CameraProvider extends ChangeNotifier {
   CameraProvider(this._repository);
 
   List<CameraModel> get allCameras => _cameras;
+  int get gridLayout => _gridLayout;
+  bool get demoSimulationMode => _demoSimulationMode;
+
+  Map<String, StreamSessionModel> get activeSessions => _activeSessions;
+
+  void setGridLayout(int count) {
+    if (count == 1 || count == 4 || count == 9) {
+      _gridLayout = count;
+      notifyListeners();
+    }
+  }
+
+  void toggleDemoSimulation(bool val) {
+    _demoSimulationMode = val;
+    notifyListeners();
+  }
+
+  LiveStreamState getStreamState(String cameraId) {
+    final camera = _cameras.firstWhere(
+      (c) => c.id == cameraId,
+      orElse: () => CameraModel(
+        id: cameraId,
+        name: 'Camera',
+        companyId: '',
+        brandId: '',
+        branchId: '',
+        sourceType: CameraSourceType.rtsp,
+        status: CameraStatus.offline,
+      ),
+    );
+
+    if (!camera.isOnline) {
+      return LiveStreamState.offline;
+    }
+
+    return _streamStates[cameraId] ?? LiveStreamState.connecting;
+  }
+
+  StreamSessionModel? getActiveSessionForCamera(String cameraId) {
+    return _activeSessions[cameraId] ?? (_activeSession?.cameraId == cameraId ? _activeSession : null);
+  }
 
   List<CameraModel> get cameras {
     if (_filterSource == null) return _cameras;
@@ -118,19 +191,82 @@ class CameraProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> startCameraStream(UserProfile user, String cameraId, {bool demoMode = true}) async {
+    final knownCam = _cameras.where((c) => c.id == cameraId).firstOrNull;
+    if (knownCam != null && !knownCam.isOnline) {
+      _streamStates[cameraId] = LiveStreamState.offline;
+      notifyListeners();
+      return;
+    }
+
+    _streamStates[cameraId] = LiveStreamState.connecting;
+    notifyListeners();
+
+    try {
+      final session = await _repository.startStreamSession(
+        user,
+        cameraId,
+        streamProfile: 'main',
+        protocol: 'webrtc',
+        demoMode: demoMode,
+      );
+      _activeSessions[cameraId] = session;
+      _streamStates[cameraId] = LiveStreamState.online;
+      if (_activeSession == null || _activeSession!.cameraId == cameraId) {
+        _activeSession = session;
+      }
+    } catch (e) {
+      _streamStates[cameraId] = LiveStreamState.streamError;
+      _errorMessage = 'Stream error for $cameraId: $e';
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  Future<void> stopCameraStream(UserProfile user, String cameraId) async {
+    final session = _activeSessions[cameraId];
+    if (session != null) {
+      try {
+        await _repository.stopStreamSession(user, cameraId, session.sessionId);
+      } catch (_) {}
+      _activeSessions.remove(cameraId);
+    }
+    if (_activeSession?.cameraId == cameraId) {
+      _activeSession = null;
+    }
+    _streamStates.remove(cameraId);
+    notifyListeners();
+  }
+
+  Future<void> reconnectCameraStream(UserProfile user, String cameraId, {bool demoMode = true}) async {
+    _streamStates[cameraId] = LiveStreamState.reconnecting;
+    notifyListeners();
+    try {
+      await _repository.reconnectStreamSession(user, cameraId);
+    } catch (_) {}
+    await startCameraStream(user, cameraId, demoMode: demoMode);
+  }
+
+  void stopAllStreams(UserProfile user) {
+    for (final entry in _activeSessions.entries) {
+      try {
+        _repository.stopStreamSession(user, entry.key, entry.value.sessionId);
+      } catch (_) {}
+    }
+    _activeSessions.clear();
+    _streamStates.clear();
+    _activeSession = null;
+    notifyListeners();
+  }
+
   Future<void> startStream(UserProfile user, String cameraId) async {
     _isStreamingLoading = true;
     _activeSession = null;
     notifyListeners();
 
     try {
-      _activeSession = await _repository.startStreamSession(
-        user,
-        cameraId,
-        streamProfile: 'main',
-        protocol: 'webrtc',
-        demoMode: true,
-      );
+      await startCameraStream(user, cameraId, demoMode: _demoSimulationMode);
+      _activeSession = _activeSessions[cameraId];
     } catch (e) {
       _errorMessage = 'Failed to start stream: $e';
     } finally {

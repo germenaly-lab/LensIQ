@@ -9,7 +9,7 @@ import '../../providers/camera_provider.dart';
 import '../../widgets/responsive_scaffold.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/loading_view.dart';
-import '../../widgets/error_view.dart';
+import 'widgets/live_camera_player_widget.dart';
 
 class CameraDetailScreen extends StatefulWidget {
   final String cameraId;
@@ -110,175 +110,46 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.border, width: 1.5),
               ),
-              child: cameraProv.isStreamingLoading
-                  ? const LoadingView(message: 'Connecting to Streaming Gateway & negotiating WebRTC...')
-                  : session == null
-                      ? ErrorView(
-                          message: cameraProv.errorMessage ?? 'Unable to start stream session',
-                          onRetry: () => cameraProv.startStream(user, widget.cameraId),
-                        )
-                      : Stack(
-                          children: [
-                            // Simulated Video Feed Content
-                            Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    camera.isHikvision ? Icons.cloud_done : Icons.videocam,
-                                    size: 64,
-                                    color: AppColors.primary.withOpacity(0.6),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    '${session.protocol.toUpperCase()} STREAM ACTIVE',
-                                    style: AppTypography.h3.copyWith(color: Colors.white, letterSpacing: 1),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    'Transcoded via LensIQ Gateway • Deduplicated Ingest',
-                                    style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Top In-Feed HUD Overlay
-                            Positioned(
-                              top: 14,
-                              left: 14,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.7),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.error,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    const Text(
-                                      'LIVE',
-                                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      '${session.fps} FPS • ${session.resolution} • ${session.codec.toUpperCase()}',
-                                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            // Top Right Latency & Viewers
-                            Positioned(
-                              top: 14,
-                              right: 14,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.7),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.speed, size: 14, color: AppColors.success),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${session.latencyMs} ms',
-                                      style: const TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.bold),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    const Icon(Icons.people_outline, size: 14, color: Colors.white70),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${session.viewerCount}',
-                                      style: const TextStyle(color: Colors.white70, fontSize: 11),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            // Bottom Controls Bar
-                            Positioned(
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.refresh, color: Colors.white),
-                                      tooltip: 'Reconnect Source',
-                                      onPressed: () => cameraProv.startStream(user, widget.cameraId),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Session: ${session.sessionId.substring(0, 16)}...',
-                                      style: AppTypography.code.copyWith(color: Colors.white70, fontSize: 11),
-                                    ),
-                                    const Spacer(),
-                                    if (session.demoMode)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary.withOpacity(0.3),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: const Text(
-                                          'DEMO MODE',
-                                          style: TextStyle(color: AppColors.primaryLight, fontSize: 10, fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+              child: LiveCameraPlayerWidget(
+                camera: camera,
+                showControls: true,
+                showAiOverlay: true,
+              ),
             ),
             const SizedBox(height: 24),
 
             // Technical Stream & Security Telemetry
-            if (session != null) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Stream Gateway Security & Protocol Telemetry', style: AppTypography.h3),
-                      const SizedBox(height: 14),
-                      _TelemetryRow(label: 'Playback Protocol', value: session.protocol.toUpperCase()),
-                      _TelemetryRow(label: 'Connection State', value: session.connectionStatus.toUpperCase()),
-                      _TelemetryRow(label: 'Single Ingest Deduplication', value: 'Active (1 pipeline for branch)'),
-                      _TelemetryRow(label: 'Session Ephemeral Token', value: '${session.token.substring(0, 24)}... (HMAC Signed)'),
-                      _TelemetryRow(
-                        label: 'Client Security Guarantee',
-                        value: 'Zero Credential Exposure (Raw passwords & Hikvision keys hidden)',
-                      ),
-                    ],
-                  ),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Camera Ingest, AI & Security Telemetry', style: AppTypography.h3),
+                    const SizedBox(height: 14),
+                    _TelemetryRow(label: 'Camera Name', value: camera.name),
+                    _TelemetryRow(label: 'Source Ingest Type', value: camera.sourceTypeDisplayName),
+                    _TelemetryRow(label: 'Branch Location', value: camera.branchName ?? 'Enterprise Facility'),
+                    _TelemetryRow(
+                      label: 'Device Status',
+                      value: camera.isOnline ? 'Online (Ingest Active)' : 'Offline (Disconnected)',
+                    ),
+                    _TelemetryRow(
+                      label: 'Stream Gateway Status',
+                      value: cameraProv.getStreamState(camera.id).displayName,
+                    ),
+                    _TelemetryRow(label: 'Playback Protocol', value: session?.protocol.toUpperCase() ?? 'WEBRTC (Unified)'),
+                    _TelemetryRow(label: 'Single Ingest Deduplication', value: 'Active (1 pipeline per camera)'),
+                    _TelemetryRow(label: 'AI Model Pipeline', value: 'YOLOv8 Nano (Person Detection @ 25 FPS)'),
+                    _TelemetryRow(label: 'Configured ROI Rule', value: 'Cashier Empty Detection (180s continuous threshold)'),
+                    _TelemetryRow(
+                      label: 'Client Security Guarantee',
+                      value: 'Zero Credential Exposure (Raw RTSP passwords & Hikvision secrets hidden)',
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ],
         ),
       ),

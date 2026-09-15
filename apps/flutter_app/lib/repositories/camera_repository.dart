@@ -84,4 +84,27 @@ class CameraRepository {
     // Return the camera optimistically for offline/demo operation
     return camera;
   }
+
+  /**
+   * Releases a live stream session when the user leaves or camera is hidden
+   */
+  Future<bool> stopStreamSession(UserProfile user, String cameraId, String sessionId) async {
+    final response = await _apiClient.post(
+      '/streams/$cameraId/stop',
+      user: user,
+      body: {'sessionId': sessionId},
+    );
+    return response.success;
+  }
+
+  /**
+   * Triggers an explicit stream reconnection cycle
+   */
+  Future<bool> reconnectStreamSession(UserProfile user, String cameraId) async {
+    final response = await _apiClient.post(
+      '/streams/$cameraId/reconnect',
+      user: user,
+    );
+    return response.success;
+  }
 }
