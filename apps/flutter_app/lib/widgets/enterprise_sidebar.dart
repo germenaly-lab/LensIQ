@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import '../core/localization/app_locale_provider.dart';
 import '../models/user_profile.dart';
 import '../providers/auth_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -96,6 +97,7 @@ class EnterpriseSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
+    final localeProvider = context.watch<AppLocaleProvider>();
     final user = authProvider.currentUser;
 
     if (user == null) return const SizedBox.shrink();
@@ -196,7 +198,7 @@ class EnterpriseSidebar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    user.role.displayName.toUpperCase(),
+                    localeProvider.tr(user.role.displayName).toUpperCase(),
                     style: AppTypography.badge.copyWith(color: _getRoleColor(user.role), fontSize: 10),
                   ),
                 ),
@@ -226,7 +228,7 @@ class EnterpriseSidebar extends StatelessWidget {
                       color: isSelected ? AppColors.primary : AppColors.textSecondary,
                     ),
                     title: Text(
-                      item.title,
+                      localeProvider.tr(item.title),
                       style: AppTypography.body.copyWith(
                         color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
                         fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
@@ -243,7 +245,7 @@ class EnterpriseSidebar extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: PopupMenuButton<UserRole>(
-              tooltip: 'Switch Demo Role',
+              tooltip: localeProvider.tr('Switch Demo Role'),
               onSelected: (role) => authProvider.switchDemoRole(role),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -256,10 +258,10 @@ class EnterpriseSidebar extends StatelessWidget {
                   children: [
                     const Icon(Icons.swap_horiz, size: 16, color: AppColors.textSecondary),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Switch Demo Role',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        localeProvider.tr('Switch Demo Role'),
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ),
                     const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.textSecondary),
@@ -324,7 +326,7 @@ class EnterpriseSidebar extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: () => authProvider.logout(),
               icon: const Icon(Icons.logout, size: 16, color: AppColors.error),
-              label: const Text('Sign Out', style: TextStyle(color: AppColors.error, fontSize: 13)),
+              label: Text(localeProvider.tr('Sign Out'), style: const TextStyle(color: AppColors.error, fontSize: 13)),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 38),
                 side: BorderSide(color: AppColors.error.withOpacity(0.3)),

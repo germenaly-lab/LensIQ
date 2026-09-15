@@ -335,6 +335,13 @@ export class NotificationService {
   }
 
   /**
+   * Helper to retrieve user notification records directly
+   */
+  getNotificationsForUser(userId: string): NotificationRecord[] {
+    return this.getUserNotifications(userId).notifications;
+  }
+
+  /**
    * Marks a notification as read
    */
   markAsRead(userId: string, notificationId: string): boolean {

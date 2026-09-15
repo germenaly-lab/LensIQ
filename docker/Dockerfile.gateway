@@ -1,0 +1,14 @@
+# ==========================================================
+# LensIQ Streaming Gateway Dockerfile (MediaMTX / WebRTC / HLS)
+# ==========================================================
+FROM bluenviron/mediamtx:latest-ffmpeg
+
+# Copy custom mediamtx configuration if provided
+# COPY docker/mediamtx.yml /mediamtx.yml
+
+# Expose RTSP, WebRTC (WHEP), and HLS streaming ports
+EXPOSE 8554 1935 8888 8889
+
+# Healthcheck on MediaMTX API / Metrics
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:8889/ || exit 1

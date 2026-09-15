@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # 1. LensIQ Core Backend API (Node.js / Express / RBAC / Vault / Notifications)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: lensiq-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - STREAMING_GATEWAY_URL=http://streaming-gateway:8889
+      - AI_SERVICE_URL=http://ai-service:8000
+      - INTERNAL_API_SECRET=lensiq-internal-service-secret-production-token
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-https://demo.supabase.co}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-demo-anon-key}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-demo-service-role-key}
+      - FIREBASE_SERVER_KEY=${FIREBASE_SERVER_KEY:-demo-firebase-fcm-server-key}
+    depends_on:
+      - streaming-gateway
+      - ai-service
+    networks:
+      - lensiq-net
+
+  # ---------------------------------------------------------------------------
+  # 2. LensIQ Computer Vision AI Microservice (Python FastAPI / YOLOv8)
+  # ---------------------------------------------------------------------------
+  ai-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ai
+    container_name: lensiq-ai-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - INTERNAL_API_SECRET=lensiq-internal-service-secret-production-token
+      - BACKEND_EVENT_URL=http://backend:3001/api/v1/internal/events
+      - CASHIER_EMPTY_THRESHOLD_SECONDS=180
+      - DETECTION_CONFIDENCE_THRESHOLD=0.50
+      - YOLO_MODEL=yolov8n.pt
+    networks:
+      - lensiq-net
+
+  # ---------------------------------------------------------------------------
+  # 3. LensIQ Streaming Gateway (MediaMTX / WebRTC WHEP / HLS)
+  # ---------------------------------------------------------------------------
+  streaming-gateway:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    container_name: lensiq-streaming-gateway
+    restart: unless-stopped
+    ports:
+      - "8554:8554"   # RTSP TCP/UDP
+      - "1935:1935"   # RTMP
+      - "8888:8888"   # HLS
+      - "8889:8889"   # WebRTC (WHEP / WHIP)
+    environment:
+      - MTX_WEBRTCADDITIONALHOSTS=${PUBLIC_GATEWAY_IP:-127.0.0.1}
+      - MTX_PROTOCOLS=tcp
+    networks:
+      - lensiq-net
+
+networks:
+  lensiq-net:
+    driver: bridge

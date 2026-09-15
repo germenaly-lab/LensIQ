@@ -10,6 +10,7 @@ import 'repositories/camera_repository.dart';
 import 'repositories/incident_repository.dart';
 import 'repositories/notification_repository.dart';
 import 'services/fcm_notification_service.dart';
+import 'core/localization/app_locale_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/camera_provider.dart';
 import 'providers/incident_provider.dart';
@@ -40,6 +41,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AppLocaleProvider(prefs)),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider(authRepo)),
         ChangeNotifierProvider(create: (_) => CameraProvider(cameraRepo)),
@@ -60,6 +62,7 @@ class LensIQApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
+    final localeProvider = context.watch<AppLocaleProvider>();
     final authProvider = context.watch<AuthProvider>();
     final router = AppRouter.createRouter(authProvider);
 
@@ -69,6 +72,11 @@ class LensIQApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,
+      locale: localeProvider.locale,
+      supportedLocales: const [
+        Locale('en'),
+        Locale('ar'),
+      ],
       routerConfig: router,
     );
   }

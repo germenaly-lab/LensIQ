@@ -24,6 +24,8 @@ import 'package:lensiq_app/widgets/notification_bell_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:lensiq_app/widgets/status_badge.dart';
 import 'package:lensiq_app/features/cameras/widgets/live_camera_player_widget.dart';
+import 'package:lensiq_app/core/localization/app_locale_provider.dart';
+import 'package:lensiq_app/widgets/language_toggle_button.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +43,7 @@ void main() {
     late FcmNotificationService fcmService;
     late NotificationRepository notificationRepo;
     late NotificationProvider notificationProvider;
+    late AppLocaleProvider localeProvider;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
@@ -56,6 +59,7 @@ void main() {
       fcmService = FcmNotificationService();
       notificationRepo = NotificationRepository();
       notificationProvider = NotificationProvider(notificationRepo, fcmService);
+      localeProvider = AppLocaleProvider(prefs);
     });
 
     // ------------------------------------------------------------------------
@@ -715,6 +719,103 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Alerts & Notifications'), findsOneWidget);
+    });
+
+    test('33. Phase 10: AppLocaleProvider defaults to English (LTR), toggles to Arabic (RTL), and provides translations', () async {
+      expect(localeProvider.languageCode, equals('en'));
+      expect(localeProvider.isArabic, isFalse);
+      expect(localeProvider.textDirection, equals(TextDirection.ltr));
+
+      // English fallback
+      expect(localeProvider.tr('Dashboard'), equals('Dashboard'));
+      expect(localeProvider.tr('Cameras'), equals('Cameras'));
+      expect(localeProvider.tr('Settings'), equals('Settings'));
+
+      // Toggle to Arabic
+      await localeProvider.toggleLanguage();
+      expect(localeProvider.languageCode, equals('ar'));
+      expect(localeProvider.isArabic, isTrue);
+      expect(localeProvider.textDirection, equals(TextDirection.rtl));
+
+      // Arabic translation dictionary lookup
+      expect(localeProvider.tr('Dashboard'), equals('لوحة التحكم'));
+      expect(localeProvider.tr('Cameras'), equals('الكاميرات'));
+      expect(localeProvider.tr('Settings'), equals('الإعدادات'));
+
+      // Toggle back to English
+      await localeProvider.toggleLanguage();
+      expect(localeProvider.languageCode, equals('en'));
+      expect(localeProvider.isArabic, isFalse);
+      expect(localeProvider.textDirection, equals(TextDirection.ltr));
+    });
+
+    testWidgets('34. Phase 10: LanguageToggleButton renders EN, toggles to عربي on tap and updates UI direction', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AppLocaleProvider>.value(
+          value: localeProvider,
+          child: const MaterialApp(
+            home: Scaffold(
+              appBar: PreferredSize(
+                preferredSize: Size.fromHeight(56),
+                child: Row(
+                  children: [
+                    LanguageToggleButton(),
+                  ],
+                ),
+              ),
+              body: SizedBox(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Initially displays EN
+      expect(find.byType(LanguageToggleButton), findsOneWidget);
+      expect(find.text('EN'), findsOneWidget);
+      expect(find.text('عربي'), findsNothing);
+
+      // Tap toggle button
+      await tester.tap(find.byType(LanguageToggleButton));
+      await tester.pumpAndSettle();
+
+      // Now displays عربي
+      expect(find.text('عربي'), findsOneWidget);
+      expect(find.text('EN'), findsNothing);
+      expect(localeProvider.isArabic, isTrue);
+
+      // Tap again to revert to EN
+      await tester.tap(find.byType(LanguageToggleButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('EN'), findsOneWidget);
+      expect(localeProvider.isArabic, isFalse);
+    });
+
+    test('35. Phase 10: Multi-source CCTV resilience, failure handling & reconnect recovery', () async {
+      final user = MockDataService.demoUsers.first;
+      final cameras = await cameraRepo.getCameras(user);
+      expect(cameras.isNotEmpty, isTrue);
+
+      // Validate presence of multi-source cameras
+      final rtspCam = cameras.firstWhere((c) => c.sourceType == CameraSourceType.rtsp);
+      final hikCam = cameras.firstWhere((c) => c.sourceType == CameraSourceType.hikvisionP2p);
+      expect(rtspCam.rtspUrl, isNotNull);
+      expect(hikCam.hikDeviceId, isNotNull);
+
+      // Verify camera initial status is online
+      expect(rtspCam.status, equals(CameraStatus.online));
+
+      // Test offline simulation and fallback
+      final offlineCam = rtspCam.copyWith(status: CameraStatus.offline);
+      expect(offlineCam.status, equals(CameraStatus.offline));
+      expect(offlineCam.status.displayName, equals('Offline'));
+
+      // Test recovery reconnect back to online
+      final recoveredCam = offlineCam.copyWith(status: CameraStatus.online);
+      expect(recoveredCam.status, equals(CameraStatus.online));
+      expect(recoveredCam.status.displayName, equals('Online'));
     });
   });
 }

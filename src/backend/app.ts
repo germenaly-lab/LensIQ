@@ -1,5 +1,7 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { CameraService } from './services/camera.service';
 import { StreamingGatewayService } from './services/streaming-gateway.service';
 import { CameraController } from './controllers/camera.controller';
@@ -19,11 +21,33 @@ export function createApp(
 ): Express {
   const app = express();
 
-  // Middleware
-  app.use(cors());
-  app.use(express.json());
+  // 1. Security Headers (Helmet) with streaming/embedding allowance
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      crossOriginEmbedderPolicy: false,
+    })
+  );
 
-  // Services & Controllers
+  // 2. CORS & Parsing
+  app.use(cors());
+  app.use(express.json({ limit: '10mb' }));
+
+  // 3. API Rate Limiting (DDoS & Brute-force protection)
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 500, // 500 requests per 15 minutes
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: {
+      success: false,
+      error: 'Too many requests, please try again later.',
+    },
+    skip: (req: Request) => req.path.startsWith('/api/v1/internal') || req.path === '/api/v1/health',
+  });
+  app.use('/api/', apiLimiter);
+
+  // 4. Services & Controllers
   const cameraService = customCameraService || new CameraService();
   const gatewayService = customGatewayService || new StreamingGatewayService(cameraService);
   const notificationService = customNotificationService || new NotificationService();
@@ -57,12 +81,12 @@ export function createApp(
     });
   });
 
-  // Global Error Handler
+  // Global Error Handler (Never expose stack traces or DB internals)
   app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    console.error('[Backend Error]:', err.message);
+    console.error(`[API Security Error] [${req.method} ${req.originalUrl}]:`, err.message);
     res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
+      error: 'An internal server error occurred. Please contact security operations.',
     });
   });
 

@@ -10,6 +10,8 @@ import '../../widgets/loading_view.dart';
 import '../../widgets/notification_preferences_dialog.dart';
 import '../../models/notification_item.dart';
 import '../../providers/notification_provider.dart';
+import '../../core/localization/app_locale_provider.dart';
+import '../../widgets/language_toggle_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -342,9 +344,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                   },
                 ),
+                // 5. Language & Regional Localization
+                Consumer<AppLocaleProvider>(
+                  builder: (context, localeProv, child) {
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.language, color: AppColors.primaryLight, size: 22),
+                                const SizedBox(width: 10),
+                                Text(localeProv.tr('Language'), style: AppTypography.h3),
+                                const Spacer(),
+                                const LanguageToggleButton(),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              localeProv.isArabic
+                                  ? 'اللغة الأصلية للمنصة هي الإنجليزية، ويمكنك التبديل إلى العربية في أي وقت لجميع القوائم والتنبيهات.'
+                                  : 'The default platform language is English. You can switch to Arabic at any time for all menus, navigation, and alerts.',
+                              style: AppTypography.bodySecondary,
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                ChoiceChip(
+                                  label: const Text('English (Default)'),
+                                  selected: !localeProv.isArabic,
+                                  onSelected: (selected) {
+                                    if (selected) localeProv.setLanguage('en');
+                                  },
+                                ),
+                                const SizedBox(width: 12),
+                                ChoiceChip(
+                                  label: const Text('العربية (Arabic)'),
+                                  selected: localeProv.isArabic,
+                                  onSelected: (selected) {
+                                    if (selected) localeProv.setLanguage('ar');
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 20),
 
-                // 5. Theme & Preferences
+                // 6. Theme & Preferences
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(24),

@@ -16,8 +16,10 @@ export function createInternalRoutes(): Router {
     }
 
     const event = req.body;
+    const eventType = event.event_type || event.eventType;
+    const cameraId = event.camera_id || event.cameraId;
     // Log receipt of event without logging sensitive data
-    console.log(`[Backend AI Ingestion] Received event '${event.event_type}' for camera '${event.camera_id}' (duration: ${event.duration}s)`);
+    console.log(`[Backend AI Ingestion] Received event '${eventType}' for camera '${cameraId}' (duration: ${event.duration}s)`);
 
     res.status(202).json({
       success: true,

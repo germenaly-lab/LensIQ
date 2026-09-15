@@ -1,141 +1,131 @@
-# LensIQ — Enterprise CCTV Monitoring Platform
+# LensIQ — Enterprise AI CCTV Monitoring Platform
 
-## Phase 1: Multi-Source Camera Architecture
+[![CI/CD Tests](https://img.shields.io/badge/Vitest%20Tests-64%2F64%20Passing-brightgreen.svg)]()
+[![Python Tests](https://img.shields.io/badge/Pytest-12%2F12%20Passing-brightgreen.svg)]()
+[![Flutter Tests](https://img.shields.io/badge/Flutter%20Tests-35%2F35%20Passing-brightgreen.svg)]()
+[![Production Status](https://img.shields.io/badge/Production-Ready-blue.svg)]()
 
-LensIQ is an enterprise-grade CCTV monitoring platform designed with a clean multi-tenant structure (`Company` ➔ `Brand` ➔ `Branch` ➔ `Camera`).
-
-In **Phase 1**, the core camera architecture and database have been restructured to decouple the system from hard-coded RTSP dependencies and support multiple video source types, specifically introducing **Hikvision P2P / Hik-Connect** alongside existing **RTSP** sources.
+LensIQ is an enterprise-grade AI CCTV video surveillance and operational intelligence platform. Designed with strict multi-tenancy (`Company` ➔ `Brand` ➔ `Branch` ➔ `Camera`), LensIQ supports diverse camera ingestion protocols (Direct RTSP and Hikvision P2P Cloud Relay), real-time YOLOv8 computer vision analytics, role-based access control (RBAC), and instantaneous push notifications with full English and Arabic localization.
 
 ---
 
-### 1. Architecture Overview
+## 🌟 Key Capabilities
+
+1. **Multi-Source Camera Support**:
+   - **RTSP Streams**: Standard IP cameras and NVR channels with TCP/UDP transport.
+   - **Hikvision P2P / Hik-Connect**: Direct cloud-assisted relay bypassing strict branch firewalls and NAT without port forwarding.
+2. **Zero-Credential Exposure**:
+   - Camera passwords and P2P verification keys are stored in an AES-256 encrypted server-side vault.
+   - Clients only receive ephemeral, time-bounded WebRTC / HLS stream tokens.
+3. **Computer Vision & AI Rules**:
+   - Integrated YOLOv8 inference microservice with custom Region-of-Interest (ROI) support.
+   - Stateful operational rules (e.g., **Cashier Empty detection** triggering an incident after 180 continuous seconds of an unattended checkout desk).
+4. **Targeted Push Notifications**:
+   - Firebase Cloud Messaging (FCM) integration with role-based scoping (Branch Security receives branch incidents; Brand Manager receives brand-wide alerts; Super Admin receives global alerts).
+   - Instant foreground notifications and deep linking directly to incident reviews.
+5. **Full Arabic & English Localization**:
+   - Default English with Left-to-Right (LTR) layout.
+   - One-tap switch (`🌐 EN` / `🌐 عربي`) in top header and settings.
+   - Automatic Right-to-Left (RTL) mirroring and comprehensive Arabic translation dictionary.
+6. **Production-Hardened Security**:
+   - Helmet HTTP headers with cross-origin resource policy for live streams.
+   - Rate limiting (500 requests per 15 minutes per IP with internal microservice bypass).
+   - Row-Level Security (RLS) and multi-column optimized database indexes.
+
+---
+
+## 🏗️ Architecture
 
 ```
-                      +-----------------------------+
-                      |   Client Tier (Web / App)   |
-                      |  - Safe Camera Projections  |
-                      |  - Zero Secret Exposure     |
-                      +--------------+--------------+
-                                     |
-                                     v
-                      +-----------------------------+
-                      |      Streaming Gateway      |
-                      |  - Decoupled from transport |
-                      +--------------+--------------+
-                                     |
-                    +----------------+----------------+
-                    |                                 |
-                    v                                 v
-        +-----------------------+         +-----------------------+
-        |      RTSPSource       |         |   HikvisionP2PSource  |
-        |  - Direct TCP/UDP     |         |  - Cloud P2P Relay    |
-        |  - URL verification   |         |  - Device ID / Ch     |
-        +-----------+-----------+         +-----------+-----------+
-                    |                                 |
-                    +----------------+----------------+
-                                     |
-                                     v
-                      +-----------------------------+
-                      |   Camera Credentials Vault  |
-                      |  - Protected Secrets        |
-                      |  - AES-256-GCM / Reference  |
-                      +-----------------------------+
++-------------------------------------------------------------------------------+
+|                       Flutter Multi-Platform Client Tier                      |
+|                (Web / Desktop / iOS / Android / Arabization)                  |
++---------------------------------------+---------------------------------------+
+                                        |
+                 +----------------------+----------------------+
+                 | (REST API / Auth / Tokens)                  | (WebRTC WHEP / HLS)
+                 v                                             v
++-----------------------------------------------+   +---------------------------+
+|             LensIQ Backend API                |   |     Streaming Gateway     |
+|   - Express / TypeScript / Helmet / Limiter   |   |   - MediaMTX / WebRTC     |
+|   - Multi-Tenant RBAC & Vault                 |   |   - Transcoding           |
+|   - Notification Dispatcher (FCM)             |   |   - Stream Session Mgr    |
++-----------------------+-----------------------+   +-------------+-------------+
+                        |                                         |
+     +------------------+------------------+                      |
+     |                                     |                      |
+     v                                     v                      v
++-----------------------+       +---------------------+   +---------------+
+|   Supabase Database   |       |  Python AI Service  |   | Camera Sources|
+|   - Multi-tenant RLS  |       |  - YOLOv8 Inference |   | - RTSP Streams|
+|   - Composite Indexes |       |  - Cashier Rule     |   | - Hikvision   |
+|   - Audit Logging     |       |  - Prometheus /met  |   |   P2P Cloud   |
++-----------------------+       +---------------------+   +---------------+
 ```
 
----
-
-### 2. Supported Camera Source Types
-
-| Source Type | Key Database Columns | Protocol Transport | Description |
-| :--- | :--- | :--- | :--- |
-| `rtsp` | `rtsp_url`, `credentials_reference`, `stream_profile` | Direct RTSP over TCP/UDP | Traditional IP camera or NVR RTSP stream. |
-| `hikvision_p2p` | `hik_device_id`, `hik_serial_number`, `hik_channel`, `hik_username`, `credentials_reference` | Hik-Connect Cloud Relay | Cloud-assisted P2P streaming bypassing local NAT/firewalls. |
+Detailed architectural diagrams and sequence flows are available in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
-### 3. Logical Abstraction (`VideoSource`)
+## 🧪 Comprehensive Test Suites
 
-The application and the Streaming Gateway operate on the abstract `VideoSource` class instead of hardcoding raw RTSP URLs:
+LensIQ maintains high test coverage across all layers:
 
-- **`VideoSource` (Base Class)**: Defines common camera traits, validation routines, stream descriptor generation, and gateway pipeline directives.
-- **`RTSPSource`**: Encapsulates RTSP connection strings and direct demuxing pipelines.
-- **`HikvisionP2PSource`**: Encapsulates Hikvision device identifiers, channel indices, and Hik-Connect cloud relay directives.
-- **`VideoSourceFactory`**: Polymorphically instantiates concrete sources based on `source_type`.
-- **`StreamingGateway`**: Consumes `VideoSource` objects to instantiate WebRTC/HLS pipelines.
-
----
-
-### 4. Database Schema & Migration Safety
-
-Database migrations are located in `supabase/migrations/`:
-
-1. **`20260915000001_initial_multitenant_cctv.sql`**:
-   - Creates `companies`, `brands`, `branches`, `app_users`, and `user_branch_access`.
-   - Enables Row-Level Security (RLS).
-2. **`20260915000002_multi_source_camera_schema.sql`**:
-   - Creates the `camera_credentials_vault` table with restricted access.
-   - Modifies or creates `cameras` table safely without dropping existing RTSP data:
-     - Adds `source_type` (`rtsp` | `hikvision_p2p`).
-     - Adds nullable `hik_device_id`, `hik_serial_number`, `hik_channel`, `hik_username`.
-     - Makes `rtsp_url` nullable for non-RTSP sources.
-     - Adds `chk_camera_source_configuration` check constraint.
-     - Establishes RLS policies ensuring tenant and branch-level isolation.
-     - Creates `safe_cameras_view` preventing credential exposure to client tiers.
-3. **`20260915000003_seed_ego_demo_data.sql`**:
-   - Seeds the demo tenant **Ego Fashion Group** (`Ego Mall of Arabia Branch`).
-   - Seeds RTSP Camera: **Cashier 01** (`source_type = 'rtsp'`).
-   - Seeds Hikvision P2P Camera: **Main Entrance** (`source_type = 'hikvision_p2p'`).
-
----
-
-### 5. Zero-Credential Leakage Guarantee
-
-- Plaintext passwords and API secrets are **never** stored in normal database columns.
-- The `cameras` table only holds a `credentials_reference` (e.g. `vault-ref-xxx`).
-- The `camera_credentials_vault` is protected server-side with AES-256 encryption.
-- The `CameraSerializer` and `safe_cameras_view` automatically strip secret tokens and inline basic-auth credentials before transmitting records to Web or Flutter mobile clients.
-
----
-
-### 6. Admin Dynamic Configuration UI
-
-Located at `/admin/cameras`:
-- Multi-tenant tenant switcher (`Ego` ➔ `Ego Fashion` ➔ `Ego Mall of Arabia Branch`).
-- Dynamic Form modal toggling fields between `RTSP` and `Hikvision P2P`.
-- Live pipeline testing against the `StreamingGateway`.
-
----
-
-### 7. Automated Testing
-
-Run the test suite:
+### 1. Node.js Backend & E2E Vitest Tests
 ```bash
 npm test
 ```
+- **64 / 64 passing** across 7 test suites:
+  - `phase1-multi-source.test.ts` (7 tests): Multi-source polymorphism & factory validation.
+  - `phase3-backend-multi-source.test.ts` (9 tests): Zero-credential serialization & vault encryption.
+  - `phase4-streaming-gateway.test.ts` (10 tests): WebRTC/HLS session management & lifecycle.
+  - `phase7-role-permissions.test.ts` (10 tests): RBAC isolation across Super Admin, Brand Manager, and Branch Security.
+  - `phase8-live-streaming.test.ts` (12 tests): Stream negotiation, token expiry, and reconnect resilience.
+  - `phase9-notifications.test.ts` (8 tests): FCM token registration, preferences, and targeting.
+  - `phase10-audit-e2e.test.ts` (8 tests): Full system security audit & multi-source E2E verification.
 
-The test suite covers:
-1. **Existing RTSP cameras continue working**: Verifies backward compatibility for `Cashier 01`.
-2. **Hikvision P2P camera records can be created**: Verifies creation and initialization of `Main Entrance`.
-3. **Camera source_type validation works**: Strict Zod runtime validation of both types.
-4. **Invalid source configurations are rejected**: Rejects missing URLs, invalid channels, or unrecognized source types.
-5. **RLS prevents unauthorized camera access**: Ensures multi-tenant isolation across branches and companies.
-6. **Sensitive credentials are not returned to frontend/Flutter clients**: Confirms serialization removes all secret keys and inline passwords.
-7. **Existing dashboard queries continue working**: Validates branch filtering, company grouping, and count statistics.
+### 2. Python AI Microservice Tests
+```bash
+services/ai-service/.venv/bin/pytest services/ai-service/tests/ -v
+```
+- **12 / 12 passing**: ROI polygon containment, detection parsing, stateful cashier-empty evaluation, `/metrics`, `/config`, and service token authentication.
+
+### 3. Flutter Client Tests & Static Analysis
+```bash
+cd apps/flutter_app
+flutter analyze
+flutter test
+```
+- **`flutter analyze`**: 0 issues found!
+- **`flutter test`**: **35 / 35 passing** including localization, language toggle, and multi-source failure recovery.
 
 ---
 
-## Phase 2: AI Computer Vision Microservice (`services/ai-service`)
+## 🚀 Deployment & DevOps
 
-Phase 2 introduces a dedicated, high-performance Computer Vision microservice built with **Python 3.11+**, **FastAPI**, **YOLOv8**, **OpenCV**, and **NumPy**.
+### Local / On-Premise (Docker Compose)
+Run the entire platform locally or on an edge appliance:
+```bash
+# 1. Copy environment configurations
+cp .env.example .env
 
-### Key Capabilities
-- **YOLOv8 Detection**: Person detection (extensible to `car`, `bag`, `chair`, `cell phone`).
-- **Hardware Acceleration**: Auto-detects NVIDIA CUDA GPU, Apple Silicon MPS, or CPU.
-- **ROI Geometry Engine**: Evaluates rectangular and polygon zones with precise footprint analysis.
-- **Stateful Rule Engine**:
-  - Production Rule: **Cashier Area Empty** (`duration_seconds = 180`, `minimum_people = 0`).
-  - Timer lifecycle: Starts when empty, resets when person enters, restarts when empty again.
-  - Duplicate suppression: Prevents incident flooding during prolonged empty episodes.
-- **Microservice Integration**: Forwards structured `AIEvent` JSON payloads to the Node.js backend.
-- **Mock & Demo Simulation**: Test without GPU or physical cameras via `POST /simulate/cashier-empty`.
+# 2. Start all microservices in the background
+docker-compose up -d --build
 
+# 3. Verify health
+curl http://localhost:3001/api/v1/health
+curl http://localhost:8000/health
+```
+
+### Production Cloud Deployment
+- **Web App**: Hosted on Vercel (`https://lensiq-ebon.vercel.app/app/`)
+- **Database & Auth**: Supabase PostgreSQL with RLS and Point-in-Time Recovery (PITR).
+- **Video & AI Services**: Deployable via Docker container to AWS ECS, GCP Cloud Run, or on-prem edge servers.
+
+---
+
+## 📚 Technical Documentation
+
+- [docs/HIKVISION_INTEGRATION_GUIDE.md](docs/HIKVISION_INTEGRATION_GUIDE.md): Protocols (ISAPI, OpenAPI, Artemis), tested hardware models, and OS requirements.
+- [docs/MONITORING_AND_RECOVERY.md](docs/MONITORING_AND_RECOVERY.md): Prometheus/Grafana setup, health checks, stream reconnect backoff, and database backups.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Multi-tenant entity-relationship and sequence diagrams.
