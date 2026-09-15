@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/responsive_util.dart';
+import '../../core/localization/app_locale_provider.dart';
 import '../../models/camera.dart';
 import '../../models/user_profile.dart';
 import '../../providers/auth_provider.dart';
@@ -75,10 +76,11 @@ class _CameraListScreenState extends State<CameraListScreen> {
       confidence: 0.98,
     );
     context.read<IncidentProvider>().addRealtimeIncident(incident);
+    final colors = context.colors;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('CRITICAL ALERT: Cashier Empty (180s) dispatched on ${camera.name}!'),
-        backgroundColor: AppColors.error,
+        backgroundColor: colors.error,
         duration: const Duration(seconds: 4),
       ),
     );
@@ -90,10 +92,10 @@ class _CameraListScreenState extends State<CameraListScreen> {
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser;
     final isDesktop = ResponsiveUtil.isDesktop(context);
+    final colors = context.colors;
 
     if (user == null) return const Scaffold(body: LoadingView());
 
-    // Filter cameras according to search & source
     final filteredCameras = cameraProv.cameras.where((c) {
       if (_searchQuery.isEmpty) return true;
       final q = _searchQuery.toLowerCase();
@@ -104,14 +106,16 @@ class _CameraListScreenState extends State<CameraListScreen> {
 
     return ResponsiveScaffold(
       currentRoute: '/cameras',
-      title: 'Live CCTV Monitoring',
+      title: 'Cameras',
       actions: [
         if (user.role == UserRole.superAdmin || user.role == UserRole.brandManager)
           ElevatedButton.icon(
             onPressed: () => _openAddCameraDialog(context, user),
             icon: const Icon(Icons.add, size: 16),
-            label: const Text('Add Camera'),
+            label: Text(context.tr('Add Camera')),
             style: ElevatedButton.styleFrom(
+              backgroundColor: colors.primary,
+              foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
@@ -119,7 +123,7 @@ class _CameraListScreenState extends State<CameraListScreen> {
         const SizedBox(width: 8),
         IconButton(
           icon: const Icon(Icons.refresh, size: 20),
-          tooltip: 'Refresh Cameras',
+          tooltip: context.tr('Refresh Stream'),
           onPressed: () => cameraProv.loadCameras(user),
         ),
       ],
@@ -129,131 +133,144 @@ class _CameraListScreenState extends State<CameraListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Top Toolbar: Monitor Mode Switch + Source Filters + Grid (1/4/9) Layout
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 10,
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    // Mode Toggle: Live Monitor vs Inventory Directory
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.all(3),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _ModeToggleButton(
-                            icon: Icons.videocam,
-                            label: 'Live Grid Monitor',
-                            isSelected: _isLiveMonitor,
-                            onTap: () => setState(() => _isLiveMonitor = true),
-                          ),
-                          _ModeToggleButton(
-                            icon: Icons.list_alt,
-                            label: 'Camera Directory',
-                            isSelected: !_isLiveMonitor,
-                            onTap: () => setState(() => _isLiveMonitor = false),
-                          ),
-                        ],
-                      ),
+            Container(
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+                boxShadow: colors.cardShadow,
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // Mode Toggle: Live Monitor vs Inventory Directory
+                  Container(
+                    decoration: BoxDecoration(
+                      color: colors.surfaceSubtle,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: colors.borderSubtle),
                     ),
-
-                    // 1, 4, 9 Layout Buttons (Only in Live Monitor mode)
-                    if (_isLiveMonitor)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'GRID LAYOUT:',
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 8),
-                          _GridLayoutButton(
-                            count: 1,
-                            label: '1 CAM',
-                            isSelected: cameraProv.gridLayout == 1,
-                            onTap: () => cameraProv.setGridLayout(1),
-                          ),
-                          const SizedBox(width: 4),
-                          _GridLayoutButton(
-                            count: 4,
-                            label: '4 CAMS (2x2)',
-                            isSelected: cameraProv.gridLayout == 4,
-                            onTap: () => cameraProv.setGridLayout(4),
-                          ),
-                          const SizedBox(width: 4),
-                          _GridLayoutButton(
-                            count: 9,
-                            label: '9 CAMS (3x3)',
-                            isSelected: cameraProv.gridLayout == 9,
-                            onTap: () => cameraProv.setGridLayout(9),
-                          ),
-                        ],
-                      ),
-
-                    // Source Filters: All, RTSP, Hikvision P2P
-                    Row(
+                    padding: const EdgeInsets.all(3),
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _FilterChip(
-                          label: 'All (${cameraProv.totalCamerasCount})',
-                          isSelected: cameraProv.filterSource == null,
-                          onTap: () => cameraProv.setFilterSource(null),
+                        _ModeToggleButton(
+                          icon: Icons.videocam,
+                          label: context.tr('Live Streams'),
+                          isSelected: _isLiveMonitor,
+                          colors: colors,
+                          onTap: () => setState(() => _isLiveMonitor = true),
                         ),
-                        const SizedBox(width: 6),
-                        _FilterChip(
-                          label: 'RTSP (${cameraProv.rtspCamerasCount})',
-                          isSelected: cameraProv.filterSource == CameraSourceType.rtsp,
-                          onTap: () => cameraProv.setFilterSource(CameraSourceType.rtsp),
-                          accentColor: AppColors.rtspBadge,
-                        ),
-                        const SizedBox(width: 6),
-                        _FilterChip(
-                          label: 'Hikvision P2P (${cameraProv.hikvisionCamerasCount})',
-                          isSelected: cameraProv.filterSource == CameraSourceType.hikvisionP2p,
-                          onTap: () => cameraProv.setFilterSource(CameraSourceType.hikvisionP2p),
-                          accentColor: AppColors.hikvisionBadge,
+                        _ModeToggleButton(
+                          icon: Icons.list_alt,
+                          label: context.tr('Camera Management'),
+                          isSelected: !_isLiveMonitor,
+                          colors: colors,
+                          onTap: () => setState(() => _isLiveMonitor = false),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  // 1, 4, 9 Layout Buttons
+                  if (_isLiveMonitor)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${context.tr("Multi-Grid").toUpperCase()}:',
+                          style: TextStyle(color: colors.textSecondary, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 8),
+                        _GridLayoutButton(
+                          count: 1,
+                          label: '1 CAM',
+                          isSelected: cameraProv.gridLayout == 1,
+                          colors: colors,
+                          onTap: () => cameraProv.setGridLayout(1),
+                        ),
+                        const SizedBox(width: 4),
+                        _GridLayoutButton(
+                          count: 4,
+                          label: '4 CAMS (2x2)',
+                          isSelected: cameraProv.gridLayout == 4,
+                          colors: colors,
+                          onTap: () => cameraProv.setGridLayout(4),
+                        ),
+                        const SizedBox(width: 4),
+                        _GridLayoutButton(
+                          count: 9,
+                          label: '9 CAMS (3x3)',
+                          isSelected: cameraProv.gridLayout == 9,
+                          colors: colors,
+                          onTap: () => cameraProv.setGridLayout(9),
+                        ),
+                      ],
+                    ),
+
+                  // Source Filters: All, RTSP, Hikvision P2P
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _FilterChip(
+                        label: '${context.tr("All Sources")} (${cameraProv.totalCamerasCount})',
+                        isSelected: cameraProv.filterSource == null,
+                        colors: colors,
+                        onTap: () => cameraProv.setFilterSource(null),
+                      ),
+                      const SizedBox(width: 6),
+                      _FilterChip(
+                        label: 'RTSP (${cameraProv.rtspCamerasCount})',
+                        isSelected: cameraProv.filterSource == CameraSourceType.rtsp,
+                        colors: colors,
+                        onTap: () => cameraProv.setFilterSource(CameraSourceType.rtsp),
+                        accentColor: colors.rtspBadge,
+                      ),
+                      const SizedBox(width: 6),
+                      _FilterChip(
+                        label: 'Hikvision P2P (${cameraProv.hikvisionCamerasCount})',
+                        isSelected: cameraProv.filterSource == CameraSourceType.hikvisionP2p,
+                        colors: colors,
+                        onTap: () => cameraProv.setFilterSource(CameraSourceType.hikvisionP2p),
+                        accentColor: colors.hikvisionBadge,
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 12),
 
-            // AI Cashier Empty Rule Simulation Banner
+            // AI Cashier Simulation Banner
             if (_isLiveMonitor)
               Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: colors.surface,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: colors.border),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.bolt, size: 18, color: AppColors.warning),
+                    Icon(Icons.bolt, size: 18, color: colors.warning),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'AI PIPELINE RULE: 0 people in ROI -> 3-min countdown (180s) -> Critical Incident -> Supabase Realtime -> Alert on Dashboard. Person entry resets timer.',
-                        style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 11),
+                        'AI PIPELINE: 0 people in ROI -> 3-min countdown (180s) -> Critical Alert. Person entry resets timer.',
+                        style: TextStyle(color: colors.textSecondary, fontSize: 11),
                       ),
                     ),
                     const SizedBox(width: 8),
                     if (filteredCameras.isNotEmpty)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.warning,
-                          side: const BorderSide(color: AppColors.warning, width: 0.8),
+                          foregroundColor: colors.warning,
+                          side: BorderSide(color: colors.warning, width: 0.8),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
                         ),
@@ -268,17 +285,17 @@ class _CameraListScreenState extends State<CameraListScreen> {
             // Main Content Area: Live Multi-View Grid or Directory
             Expanded(
               child: cameraProv.isLoading
-                  ? const LoadingView(message: 'Loading multi-source camera streams...')
+                  ? LoadingView(message: context.tr('Loading...'))
                   : filteredCameras.isEmpty
                       ? EmptyStateView(
-                          title: 'No Cameras Found',
+                          title: context.tr('No data found'),
                           description: _searchQuery.isNotEmpty
                               ? 'No cameras matching "$_searchQuery". Try clearing your search.'
                               : 'No cameras provisioned under your authorization scope.',
                         )
                       : _isLiveMonitor
-                          ? _buildLiveGrid(context, filteredCameras, cameraProv.gridLayout, isDesktop)
-                          : _buildInventoryGrid(context, filteredCameras, cameraProv, isDesktop),
+                          ? _buildLiveGrid(context, filteredCameras, cameraProv.gridLayout, isDesktop, colors)
+                          : _buildInventoryGrid(context, filteredCameras, cameraProv, isDesktop, colors),
             ),
           ],
         ),
@@ -291,8 +308,8 @@ class _CameraListScreenState extends State<CameraListScreen> {
     List<CameraModel> cameras,
     int targetLayout,
     bool isDesktop,
+    AppSemanticColors colors,
   ) {
-    // Slice cameras to matching layout count: 1, 4, or 9
     final activeCount = targetLayout.clamp(1, 9);
     final displayedCameras = cameras.take(activeCount).toList();
 
@@ -306,7 +323,6 @@ class _CameraListScreenState extends State<CameraListScreen> {
       crossAxisCount = isDesktop ? 2 : (ResponsiveUtil.isTablet(context) ? 2 : 1);
       childAspectRatio = 1.45;
     } else {
-      // 9 cameras
       crossAxisCount = isDesktop ? 3 : (ResponsiveUtil.isTablet(context) ? 2 : 1);
       childAspectRatio = 1.35;
     }
@@ -331,7 +347,6 @@ class _CameraListScreenState extends State<CameraListScreen> {
             onExpand: () => context.go('/cameras/${camera.id}'),
           );
         } else {
-          // Placeholder empty slot
           return Container(
             decoration: BoxDecoration(
               color: Colors.black45,
@@ -362,18 +377,28 @@ class _CameraListScreenState extends State<CameraListScreen> {
     List<CameraModel> cameras,
     CameraProvider cameraProv,
     bool isDesktop,
+    AppSemanticColors colors,
   ) {
     return Column(
       children: [
-        // Search Box in Inventory View
-        TextField(
-          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search, size: 18, color: AppColors.textMuted),
-            hintText: 'Search camera by name or branch location...',
-            contentPadding: EdgeInsets.symmetric(vertical: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: colors.border),
           ),
-          onChanged: (val) => setState(() => _searchQuery = val),
+          child: TextField(
+            style: TextStyle(fontSize: 14, color: colors.textPrimary),
+            decoration: InputDecoration(
+              prefixIcon: Icon(Icons.search, size: 18, color: colors.textMuted),
+              hintText: context.tr('Search cameras...'),
+              hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
+              border: InputBorder.none,
+              isDense: true,
+            ),
+            onChanged: (val) => setState(() => _searchQuery = val),
+          ),
         ),
         const SizedBox(height: 14),
 
@@ -384,18 +409,20 @@ class _CameraListScreenState extends State<CameraListScreen> {
               crossAxisCount: isDesktop ? 3 : (ResponsiveUtil.isTablet(context) ? 2 : 1),
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              childAspectRatio: 1.35,
+              childAspectRatio: isDesktop ? 1.55 : 1.4,
             ),
             itemBuilder: (context, index) {
               final camera = cameras[index];
               return _CameraCard(
                 camera: camera,
+                colors: colors,
                 onWatch: () => context.go('/cameras/${camera.id}'),
                 onEdit: () {
                   showDialog(
                     context: context,
                     builder: (ctx) => _EditCameraDialog(
                       camera: camera,
+                      colors: colors,
                       onSave: (updated) => cameraProv.updateCamera(updated),
                     ),
                   );
@@ -410,288 +437,18 @@ class _CameraListScreenState extends State<CameraListScreen> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final Color? accentColor;
-
-  const _FilterChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-    this.accentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = accentColor ?? AppColors.primary;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.2) : AppColors.surface,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: isSelected ? color : AppColors.border,
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-            color: isSelected ? Colors.white : AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CameraCard extends StatelessWidget {
-  final CameraModel camera;
-  final VoidCallback onWatch;
-  final VoidCallback onEdit;
-  final VoidCallback onToggleEnabled;
-
-  const _CameraCard({
-    required this.camera,
-    required this.onWatch,
-    required this.onEdit,
-    required this.onToggleEnabled,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    camera.name,
-                    style: AppTypography.h3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                StatusBadge(status: camera.status),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              camera.locationDescription ?? 'Standard Store Surveillance',
-              style: AppTypography.caption,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    camera.isHikvision ? Icons.cloud_done_outlined : Icons.router_outlined,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      camera.isHikvision
-                          ? 'Device: ${camera.hikDeviceId ?? "P2P Cloud"} (Ch ${camera.hikChannel ?? 1})'
-                          : 'RTSP Stream: ${camera.streamProfile.toUpperCase()} Profile',
-                      style: AppTypography.code.copyWith(fontSize: 11),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                SourceTypeBadge(sourceType: camera.sourceType),
-                const SizedBox(width: 8),
-                Text(
-                  camera.enabled ? 'ENABLED' : 'DISABLED',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: camera.enabled ? AppColors.success : AppColors.textMuted,
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  tooltip: 'Edit Camera',
-                  onPressed: onEdit,
-                ),
-                IconButton(
-                  icon: Icon(
-                    camera.enabled ? Icons.visibility : Icons.visibility_off,
-                    size: 18,
-                    color: camera.enabled ? AppColors.primary : AppColors.textMuted,
-                  ),
-                  tooltip: camera.enabled ? 'Disable Camera' : 'Enable Camera',
-                  onPressed: onToggleEnabled,
-                ),
-                ElevatedButton.icon(
-                  onPressed: onWatch,
-                  icon: const Icon(Icons.play_circle_fill, size: 16),
-                  label: const Text('Live Stream'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EditCameraDialog extends StatefulWidget {
-  final CameraModel camera;
-  final Function(CameraModel updated) onSave;
-
-  const _EditCameraDialog({required this.camera, required this.onSave});
-
-  @override
-  State<_EditCameraDialog> createState() => _EditCameraDialogState();
-}
-
-class _EditCameraDialogState extends State<_EditCameraDialog> {
-  late TextEditingController _nameController;
-  late TextEditingController _locationController;
-  late String _streamProfile;
-  late bool _enabled;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.camera.name);
-    _locationController = TextEditingController(text: widget.camera.locationDescription ?? '');
-    _streamProfile = widget.camera.streamProfile;
-    _enabled = widget.camera.enabled;
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _locationController.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final updated = widget.camera.copyWith(
-      name: _nameController.text.trim(),
-      locationDescription: _locationController.text.trim(),
-      streamProfile: _streamProfile,
-      enabled: _enabled,
-    );
-    widget.onSave(updated);
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 500),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Edit Camera Settings', style: AppTypography.h2),
-            const SizedBox(height: 6),
-            Text(
-              'Update surveillance parameters. Credentials remain securely stored in the Vault.',
-              style: AppTypography.caption,
-            ),
-            const Divider(height: 24),
-            TextField(
-              controller: _nameController,
-              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-              decoration: const InputDecoration(labelText: 'Camera Name'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _locationController,
-              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-              decoration: const InputDecoration(labelText: 'Zone / Location Description'),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _streamProfile,
-              dropdownColor: AppColors.surface,
-              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-              decoration: const InputDecoration(labelText: 'Stream Profile'),
-              items: const [
-                DropdownMenuItem(value: 'main', child: Text('Main Stream (1080p Full Quality)')),
-                DropdownMenuItem(value: 'sub', child: Text('Sub Stream (360p Low Bandwidth)')),
-              ],
-              onChanged: (val) => setState(() => _streamProfile = val ?? 'main'),
-            ),
-            const SizedBox(height: 12),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Camera Enabled', style: AppTypography.bodyMedium),
-              subtitle: const Text('Active for AI computer vision ingest', style: AppTypography.caption),
-              value: _enabled,
-              onChanged: (val) => setState(() => _enabled = val),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _submit,
-                  child: const Text('Save Changes'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ModeToggleButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool isSelected;
+  final AppSemanticColors colors;
   final VoidCallback onTap;
 
   const _ModeToggleButton({
     required this.icon,
     required this.label,
     required this.isSelected,
+    required this.colors,
     required this.onTap,
   });
 
@@ -701,22 +458,22 @@ class _ModeToggleButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.transparent,
+          color: isSelected ? colors.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: isSelected ? Colors.white : AppColors.textSecondary),
+            Icon(icon, size: 16, color: isSelected ? Colors.white : colors.textSecondary),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? Colors.white : AppColors.textSecondary,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? Colors.white : colors.textSecondary,
               ),
             ),
           ],
@@ -730,12 +487,14 @@ class _GridLayoutButton extends StatelessWidget {
   final int count;
   final String label;
   final bool isSelected;
+  final AppSemanticColors colors;
   final VoidCallback onTap;
 
   const _GridLayoutButton({
     required this.count,
     required this.label,
     required this.isSelected,
+    required this.colors,
     required this.onTap,
   });
 
@@ -747,10 +506,51 @@ class _GridLayoutButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.2) : AppColors.surface,
+          color: isSelected ? colors.primary.withOpacity(0.15) : colors.surfaceSubtle,
           borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: isSelected ? colors.primary : colors.borderSubtle),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: isSelected ? colors.primary : colors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final AppSemanticColors colors;
+  final VoidCallback onTap;
+  final Color? accentColor;
+
+  const _FilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.colors,
+    required this.onTap,
+    this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = accentColor ?? colors.primary;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.15) : colors.surfaceSubtle,
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
+            color: isSelected ? color : colors.borderSubtle,
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -758,11 +558,230 @@ class _GridLayoutButton extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 11,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? Colors.white : AppColors.textSecondary,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            color: isSelected ? color : colors.textSecondary,
           ),
         ),
       ),
+    );
+  }
+}
+
+class _CameraCard extends StatelessWidget {
+  final CameraModel camera;
+  final AppSemanticColors colors;
+  final VoidCallback onWatch;
+  final VoidCallback onEdit;
+  final VoidCallback onToggleEnabled;
+
+  const _CameraCard({
+    required this.camera,
+    required this.colors,
+    required this.onWatch,
+    required this.onEdit,
+    required this.onToggleEnabled,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.cardShadow,
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  camera.name,
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              StatusBadge(status: camera.status),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            camera.locationDescription ?? 'Standard Store Surveillance',
+            style: TextStyle(fontSize: 11, color: colors.textMuted),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: colors.surfaceSubtle,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: colors.borderSubtle),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  camera.isHikvision ? Icons.cloud_done_outlined : Icons.router_outlined,
+                  size: 15,
+                  color: colors.textMuted,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    camera.isHikvision
+                        ? 'Device: ${camera.hikDeviceId ?? "P2P Cloud"} (Ch ${camera.hikChannel ?? 1})'
+                        : 'RTSP Stream: ${camera.streamProfile.toUpperCase()}',
+                    style: TextStyle(fontSize: 11, color: colors.textSecondary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              SourceTypeBadge(sourceType: camera.sourceType),
+              const SizedBox(width: 8),
+              Text(
+                camera.enabled ? context.tr('Active') : context.tr('Inactive'),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: camera.enabled ? colors.success : colors.textMuted,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: Icon(Icons.edit_outlined, size: 16, color: colors.textSecondary),
+                tooltip: context.tr('Edit'),
+                onPressed: onEdit,
+              ),
+              IconButton(
+                icon: Icon(
+                  camera.enabled ? Icons.visibility : Icons.visibility_off,
+                  size: 16,
+                  color: camera.enabled ? colors.primary : colors.textMuted,
+                ),
+                tooltip: camera.enabled ? context.tr('Active') : context.tr('Inactive'),
+                onPressed: onToggleEnabled,
+              ),
+              ElevatedButton.icon(
+                onPressed: onWatch,
+                icon: const Icon(Icons.play_circle_fill, size: 14),
+                label: Text(context.tr('Live Streams')),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditCameraDialog extends StatefulWidget {
+  final CameraModel camera;
+  final AppSemanticColors colors;
+  final Function(CameraModel updated) onSave;
+
+  const _EditCameraDialog({
+    required this.camera,
+    required this.colors,
+    required this.onSave,
+  });
+
+  @override
+  State<_EditCameraDialog> createState() => _EditCameraDialogState();
+}
+
+class _EditCameraDialogState extends State<_EditCameraDialog> {
+  late TextEditingController _nameController;
+  late TextEditingController _locationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.camera.name);
+    _locationController = TextEditingController(text: widget.camera.locationDescription ?? '');
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = widget.colors;
+
+    return AlertDialog(
+      backgroundColor: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: colors.border),
+      ),
+      title: Text(context.tr('Edit Camera'), style: AppTypography.h3Of(context)),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameController,
+              style: TextStyle(color: colors.textPrimary),
+              decoration: InputDecoration(
+                labelText: context.tr('Camera Name'),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _locationController,
+              style: TextStyle(color: colors.textPrimary),
+              decoration: InputDecoration(
+                labelText: context.tr('Address'),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.tr('Cancel'), style: TextStyle(color: colors.textSecondary)),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            widget.onSave(
+              widget.camera.copyWith(
+                name: _nameController.text.trim(),
+                locationDescription: _locationController.text.trim(),
+              ),
+            );
+            Navigator.of(context).pop();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: colors.primary,
+            foregroundColor: Colors.white,
+          ),
+          child: Text(context.tr('Save Changes')),
+        ),
+      ],
     );
   }
 }

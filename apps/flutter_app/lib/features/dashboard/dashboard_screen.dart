@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/responsive_util.dart';
+import '../../core/localization/app_locale_provider.dart';
 import '../../models/user_profile.dart';
 import '../../models/camera.dart';
 import '../../models/incident.dart';
@@ -68,6 +69,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final cameraProv = context.watch<CameraProvider>();
     final incidentProv = context.watch<IncidentProvider>();
     final adminProv = context.watch<AdminProvider>();
+    final colors = context.colors;
 
     if (user == null) return const Scaffold(body: LoadingView());
 
@@ -77,11 +79,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (user.isBrandManager) {
       return ResponsiveScaffold(
         currentRoute: '/dashboard',
-        title: '${user.brandName ?? "Brand"} Operations Center',
+        title: '${user.brandName ?? "Brand"} ${context.tr("Operations Center")}',
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),
-            tooltip: 'Refresh Realtime Data',
+            tooltip: context.tr('Refresh Realtime Data'),
             onPressed: () {
               cameraProv.loadCameras(user);
               incidentProv.loadData(user);
@@ -95,16 +97,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (user.isBranchSecurity) {
       if (!isDesktop) {
-        // Mobile-first specialized layout for Security Staff
         return const BranchSecurityDashboard();
       }
       return ResponsiveScaffold(
         currentRoute: '/dashboard',
-        title: '${user.branchName ?? "Branch"} Security Console',
+        title: '${user.branchName ?? "Branch"} ${context.tr("Operations Center")}',
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),
-            tooltip: 'Refresh Realtime Data',
+            tooltip: context.tr('Refresh Realtime Data'),
             onPressed: () {
               cameraProv.loadCameras(user);
               incidentProv.loadData(user);
@@ -116,14 +117,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    // 2. Super Admin Dashboard (Phase 6 Full Executive View)
+    // 2. Super Admin Dashboard (Executive Monitoring Command Center)
     return ResponsiveScaffold(
       currentRoute: '/dashboard',
-      title: 'Executive Monitoring Command Center',
+      title: 'Operations Center',
       actions: [
         IconButton(
           icon: const Icon(Icons.refresh, size: 20),
-          tooltip: 'Refresh Realtime Data',
+          tooltip: context.tr('Refresh Realtime Data'),
           onPressed: () {
             cameraProv.loadCameras(user);
             incidentProv.loadData(user);
@@ -142,24 +143,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Executive Top Bar (Page title, date/time, system status, user profile)
-              _buildExecutiveTopBar(user),
+              // 1. Executive Top Bar
+              _buildExecutiveTopBar(context, user, colors),
               const SizedBox(height: 24),
 
-              // 2. Executive Metrics Row (6 key metrics)
-              _buildExecutiveMetrics(context, cameraProv, incidentProv, adminProv),
+              // 2. Executive Metrics Row (6 key metrics with flexible layout)
+              _buildExecutiveMetrics(context, cameraProv, incidentProv, adminProv, isDesktop),
               const SizedBox(height: 28),
 
               // 3. Live Incident Feed
-              _buildLiveIncidentFeed(context, incidentProv.rawIncidents),
+              _buildLiveIncidentFeed(context, incidentProv.rawIncidents, colors),
               const SizedBox(height: 28),
 
-              // 4. Real Database Charts Section
-              const Text('Surveillance & Incident Intelligence', style: AppTypography.h2),
+              // 4. Intelligence Charts Section
+              Text(
+                context.tr('Surveillance & Incident Intelligence'),
+                style: AppTypography.h2Of(context).copyWith(fontSize: 18),
+              ),
               const SizedBox(height: 4),
               Text(
-                'Live aggregates computed across multi-brand holding database tables.',
-                style: AppTypography.bodySecondary,
+                context.tr('Live aggregates computed across multi-brand holding database tables.'),
+                style: AppTypography.captionOf(context),
               ),
               const SizedBox(height: 16),
               DashboardCharts(
@@ -173,8 +177,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 28),
 
-              // 5. Camera Health Section (with brand, branch, status filters)
-              _buildCameraHealthSection(context, cameraProv),
+              // 5. Camera Health Section
+              _buildCameraHealthSection(context, cameraProv, adminProv, colors),
               const SizedBox(height: 28),
 
               // 6. Two-Column Row: Branch Overview & Recent Activity
@@ -182,15 +186,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(flex: 3, child: _buildBranchOverview(context, adminProv.branches)),
+                    Expanded(flex: 3, child: _buildBranchOverview(context, adminProv.branches, colors)),
                     const SizedBox(width: 24),
-                    Expanded(flex: 2, child: _buildRecentActivity(context, adminProv.auditLogs)),
+                    Expanded(flex: 2, child: _buildRecentActivity(context, adminProv.auditLogs, colors)),
                   ],
                 )
               else ...[
-                _buildBranchOverview(context, adminProv.branches),
+                _buildBranchOverview(context, adminProv.branches, colors),
                 const SizedBox(height: 24),
-                _buildRecentActivity(context, adminProv.auditLogs),
+                _buildRecentActivity(context, adminProv.auditLogs, colors),
               ],
             ],
           ),
@@ -200,15 +204,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // 1. Top Bar
-  Widget _buildExecutiveTopBar(UserProfile user) {
+  Widget _buildExecutiveTopBar(BuildContext context, UserProfile user, AppSemanticColors colors) {
     final formattedTime = DateFormat('EEEE, MMM d, yyyy • HH:mm:ss').format(_currentTime);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.cardShadow,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -219,17 +224,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Row(
                 children: [
-                  const Text('Super Admin Operations Portal', style: AppTypography.h2),
+                  Text(
+                    context.tr('Operations Center'),
+                    style: AppTypography.h2Of(context).copyWith(fontSize: 18),
+                  ),
                   const SizedBox(width: 10),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.15),
+                      color: colors.primary.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      'TENANT HQ',
-                      style: AppTypography.badge.copyWith(color: AppColors.primaryLight, fontSize: 10),
+                      context.tr('Global Access'),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: colors.primary,
+                      ),
                     ),
                   ),
                 ],
@@ -237,9 +249,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Icon(Icons.access_time, size: 14, color: AppColors.textMuted),
+                  Icon(Icons.access_time, size: 14, color: colors.textMuted),
                   const SizedBox(width: 6),
-                  Text(formattedTime, style: AppTypography.caption),
+                  Text(formattedTime, style: AppTypography.captionOf(context)),
                 ],
               ),
             ],
@@ -252,18 +264,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.12),
+                  color: colors.success.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.success.withOpacity(0.3)),
+                  border: Border.all(color: colors.success.withOpacity(0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.circle, size: 8, color: AppColors.success),
-                    SizedBox(width: 6),
+                  children: [
+                    Icon(Icons.circle, size: 8, color: colors.success),
+                    const SizedBox(width: 6),
                     Text(
-                      'AI Vision Ingest Active',
-                      style: TextStyle(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.bold),
+                      context.tr('System Operational'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colors.success,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -274,32 +290,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.background,
+                  color: colors.surfaceSubtle,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: colors.border),
                 ),
                 child: Row(
                   children: [
                     CircleAvatar(
                       radius: 12,
-                      backgroundColor: AppColors.primary.withOpacity(0.2),
+                      backgroundColor: colors.primaryContainer,
                       child: Text(
-                        user.fullName.isNotEmpty ? user.fullName[0] : 'A',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'A',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: colors.primary),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(user.fullName, style: AppTypography.bodyMedium),
+                    Text(
+                      user.fullName,
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                    ),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppColors.secondary.withOpacity(0.15),
+                        color: colors.secondary.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        user.role.displayName.toUpperCase(),
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.secondary),
+                        context.tr(user.role.displayName).toUpperCase(),
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colors.secondary),
                       ),
                     ),
                   ],
@@ -318,9 +337,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     CameraProvider cameraProv,
     IncidentProvider incidentProv,
     AdminProvider adminProv,
+    bool isDesktop,
   ) {
-    final isDesktop = ResponsiveUtil.isDesktop(context);
+    final screenWidth = MediaQuery.of(context).size.width;
     final columns = isDesktop ? 6 : (ResponsiveUtil.isTablet(context) ? 3 : 2);
+    final ratio = isDesktop ? (screenWidth > 1400 ? 1.65 : 1.45) : (ResponsiveUtil.isTablet(context) ? 1.4 : 1.35);
+    final colors = context.colors;
 
     return GridView.count(
       crossAxisCount: columns,
@@ -328,14 +350,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       mainAxisSpacing: 14,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: isDesktop ? 1.45 : 1.3,
+      childAspectRatio: ratio,
       children: [
         MetricCard(
           title: 'Total Branches',
           value: '${adminProv.totalBranchesCount}',
           subtitle: 'Active Store Locations',
           icon: Icons.storefront_outlined,
-          color: AppColors.primary,
+          color: colors.primary,
+          trend: '+2 this month',
+          isPositiveTrend: true,
           onTap: () => context.go('/branches'),
         ),
         MetricCard(
@@ -343,7 +367,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           value: '${cameraProv.onlineCount}',
           subtitle: 'Streaming Real-Time',
           icon: Icons.videocam,
-          color: AppColors.success,
+          color: colors.success,
+          trend: '${cameraProv.availabilityPercentage.toStringAsFixed(0)}% uptime',
+          isPositiveTrend: true,
           onTap: () => context.go('/cameras'),
         ),
         MetricCard(
@@ -351,7 +377,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           value: '${cameraProv.offlineCount + cameraProv.warningCount}',
           subtitle: '${cameraProv.warningCount} Degraded • ${cameraProv.offlineCount} Down',
           icon: Icons.videocam_off_outlined,
-          color: (cameraProv.offlineCount + cameraProv.warningCount) > 0 ? AppColors.error : AppColors.textMuted,
+          color: (cameraProv.offlineCount + cameraProv.warningCount) > 0 ? colors.error : colors.textMuted,
           onTap: () => context.go('/cameras'),
         ),
         MetricCard(
@@ -359,7 +385,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           value: '${incidentProv.activeIncidentsCount}',
           subtitle: 'Unresolved Alarms',
           icon: Icons.notifications_active_outlined,
-          color: incidentProv.activeIncidentsCount > 0 ? AppColors.warning : AppColors.success,
+          color: incidentProv.activeIncidentsCount > 0 ? colors.warning : colors.success,
           onTap: () => context.go('/incidents'),
         ),
         MetricCard(
@@ -367,7 +393,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           value: '${incidentProv.criticalIncidentsCount}',
           subtitle: 'Immediate NOC Attention',
           icon: Icons.warning_amber_rounded,
-          color: incidentProv.criticalIncidentsCount > 0 ? AppColors.error : AppColors.textMuted,
+          color: incidentProv.criticalIncidentsCount > 0 ? colors.error : colors.textMuted,
           onTap: () => context.go('/incidents'),
         ),
         MetricCard(
@@ -375,7 +401,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           value: '${incidentProv.incidentsTodayCount}',
           subtitle: 'Cumulative 24h Detections',
           icon: Icons.today_outlined,
-          color: AppColors.accent,
+          color: colors.accent,
           onTap: () => context.go('/incidents'),
         ),
       ],
@@ -383,338 +409,380 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // 3. Live Incident Feed
-  Widget _buildLiveIncidentFeed(BuildContext context, List<IncidentModel> incidents) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Icon(Icons.flash_on, color: AppColors.error, size: 18),
+  Widget _buildLiveIncidentFeed(
+    BuildContext context,
+    List<IncidentModel> incidents,
+    AppSemanticColors colors,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.cardShadow,
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: colors.error.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    const SizedBox(width: 10),
-                    const Text('Live Incident Feed', style: AppTypography.h2),
-                    const SizedBox(width: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.error,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${incidents.where((i) => i.status == IncidentStatus.open).length} ACTIVE',
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
+                    child: Icon(Icons.flash_on, color: colors.error, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    context.tr('Live Incident Feed'),
+                    style: AppTypography.h3Of(context).copyWith(fontSize: 16),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: colors.error,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  ],
-                ),
-                TextButton.icon(
-                  onPressed: () => context.go('/incidents'),
-                  icon: const Icon(Icons.arrow_forward, size: 14),
-                  label: const Text('Manage All Incidents'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            if (incidents.isEmpty)
-              const Center(child: Text('No active security incidents detected.'))
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: incidents.take(3).length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final inc = incidents[index];
-                  return _IncidentFeedCard(
-                    incident: inc,
-                    onTap: () => context.go('/incidents'),
-                  );
-                },
+                    child: Text(
+                      '${incidents.where((i) => i.status == IncidentStatus.open).length} ${context.tr("Active")}',
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ],
               ),
-          ],
-        ),
+              TextButton.icon(
+                onPressed: () => context.go('/incidents'),
+                icon: const Icon(Icons.arrow_forward, size: 14),
+                label: Text(context.tr('Incidents')),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          if (incidents.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  context.tr('No incidents found'),
+                  style: TextStyle(color: colors.textMuted),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: incidents.take(3).length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final inc = incidents[index];
+                return _IncidentFeedCard(
+                  incident: inc,
+                  colors: colors,
+                  onTap: () => context.go('/incidents'),
+                );
+              },
+            ),
+        ],
       ),
     );
   }
 
   // 5. Camera Health Section
-  Widget _buildCameraHealthSection(BuildContext context, CameraProvider cameraProv) {
+  Widget _buildCameraHealthSection(
+    BuildContext context,
+    CameraProvider cameraProv,
+    AdminProvider adminProv,
+    AppSemanticColors colors,
+  ) {
     final filteredCameras = cameraProv.healthFilteredCameras;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Camera Health & Telemetry', style: AppTypography.h2),
-                    Text(
-                      'Live status, frame rates, and latency for multi-source camera fleet.',
-                      style: AppTypography.caption,
-                    ),
-                  ],
-                ),
-                TextButton.icon(
-                  onPressed: () => context.go('/cameras'),
-                  icon: const Icon(Icons.arrow_forward, size: 14),
-                  label: const Text('View All Cameras'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Health Filter Bar
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.cardShadow,
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Status Chips (Online, Offline, Warning, Unknown)
-                  _HealthChip(
-                    label: 'All (${cameraProv.totalCamerasCount})',
-                    isSelected: cameraProv.healthStatusFilter == null,
-                    onTap: () => cameraProv.setHealthStatusFilter(null),
+                  Text(
+                    context.tr('Camera Health'),
+                    style: AppTypography.h3Of(context).copyWith(fontSize: 16),
                   ),
-                  const SizedBox(width: 8),
-                  _HealthChip(
-                    label: 'Online (${cameraProv.onlineCount})',
-                    isSelected: cameraProv.healthStatusFilter == CameraStatus.online,
-                    color: AppColors.success,
-                    onTap: () => cameraProv.setHealthStatusFilter(CameraStatus.online),
-                  ),
-                  const SizedBox(width: 8),
-                  _HealthChip(
-                    label: 'Warning (${cameraProv.warningCount})',
-                    isSelected: cameraProv.healthStatusFilter == CameraStatus.warning,
-                    color: AppColors.warning,
-                    onTap: () => cameraProv.setHealthStatusFilter(CameraStatus.warning),
-                  ),
-                  const SizedBox(width: 8),
-                  _HealthChip(
-                    label: 'Offline (${cameraProv.offlineCount})',
-                    isSelected: cameraProv.healthStatusFilter == CameraStatus.offline,
-                    color: AppColors.error,
-                    onTap: () => cameraProv.setHealthStatusFilter(CameraStatus.offline),
-                  ),
-                  const SizedBox(width: 8),
-                  _HealthChip(
-                    label: 'Unknown (${cameraProv.unknownCount})',
-                    isSelected: cameraProv.healthStatusFilter == CameraStatus.unknown,
-                    color: AppColors.textMuted,
-                    onTap: () => cameraProv.setHealthStatusFilter(CameraStatus.unknown),
-                  ),
-                  const Spacer(),
-
-                  // Brand & Branch Filter Dropdowns
-                  DropdownButton<String?>(
-                    value: cameraProv.healthBrandFilter,
-                    underline: const SizedBox.shrink(),
-                    dropdownColor: AppColors.surface,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
-                    hint: const Text('Filter Brand', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                    items: const [
-                      DropdownMenuItem(value: null, child: Text('All Brands')),
-                      DropdownMenuItem(value: 'Ego', child: Text('Ego Fashion')),
-                      DropdownMenuItem(value: 'Armani', child: Text('Armani Exchange')),
-                    ],
-                    onChanged: (val) => cameraProv.setHealthBrandFilter(val),
-                  ),
-                  const SizedBox(width: 12),
-                  DropdownButton<String?>(
-                    value: cameraProv.healthBranchFilter,
-                    underline: const SizedBox.shrink(),
-                    dropdownColor: AppColors.surface,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
-                    hint: const Text('Filter Branch', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                    items: const [
-                      DropdownMenuItem(value: null, child: Text('All Branches')),
-                      DropdownMenuItem(value: 'Mall of Arabia', child: Text('Mall of Arabia')),
-                      DropdownMenuItem(value: 'Festival City', child: Text('Cairo Festival City')),
-                      DropdownMenuItem(value: 'City Stars', child: Text('City Stars')),
-                    ],
-                    onChanged: (val) => cameraProv.setHealthBranchFilter(val),
+                  Text(
+                    context.tr('Stream Health'),
+                    style: AppTypography.captionOf(context),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
-
-            // Camera Health Grid
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: filteredCameras.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 2.1,
+              TextButton.icon(
+                onPressed: () => context.go('/cameras'),
+                icon: const Icon(Icons.arrow_forward, size: 14),
+                label: Text(context.tr('Cameras')),
               ),
-              itemBuilder: (context, index) {
-                final cam = filteredCameras[index];
-                return _CameraHealthCard(camera: cam);
-              },
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Health Filter Bar
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: colors.surfaceSubtle,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: colors.borderSubtle),
             ),
-          ],
-        ),
+            child: Row(
+              children: [
+                _HealthChip(
+                  label: '${context.tr("All Sources")} (${cameraProv.totalCamerasCount})',
+                  isSelected: cameraProv.healthStatusFilter == null,
+                  colors: colors,
+                  onTap: () => cameraProv.setHealthStatusFilter(null),
+                ),
+                const SizedBox(width: 8),
+                _HealthChip(
+                  label: '${context.tr("Online")} (${cameraProv.onlineCount})',
+                  isSelected: cameraProv.healthStatusFilter == CameraStatus.online,
+                  color: colors.success,
+                  colors: colors,
+                  onTap: () => cameraProv.setHealthStatusFilter(CameraStatus.online),
+                ),
+                const SizedBox(width: 8),
+                _HealthChip(
+                  label: '${context.tr("Warning")} (${cameraProv.warningCount})',
+                  isSelected: cameraProv.healthStatusFilter == CameraStatus.warning,
+                  color: colors.warning,
+                  colors: colors,
+                  onTap: () => cameraProv.setHealthStatusFilter(CameraStatus.warning),
+                ),
+                const SizedBox(width: 8),
+                _HealthChip(
+                  label: '${context.tr("Offline")} (${cameraProv.offlineCount})',
+                  isSelected: cameraProv.healthStatusFilter == CameraStatus.offline,
+                  color: colors.error,
+                  colors: colors,
+                  onTap: () => cameraProv.setHealthStatusFilter(CameraStatus.offline),
+                ),
+                const Spacer(),
+
+                // Dynamic Brand Dropdown Filter
+                DropdownButton<String?>(
+                  value: cameraProv.healthBrandFilter,
+                  underline: const SizedBox.shrink(),
+                  dropdownColor: colors.surfaceElevated,
+                  style: TextStyle(fontSize: 12, color: colors.textPrimary),
+                  hint: Text(context.tr('Filter by Brand'), style: TextStyle(color: colors.textMuted, fontSize: 12)),
+                  items: [
+                    DropdownMenuItem(value: null, child: Text(context.tr('All Brands'))),
+                    ...adminProv.brands.map(
+                      (b) => DropdownMenuItem(value: b.name, child: Text(b.name)),
+                    ),
+                  ],
+                  onChanged: (val) => cameraProv.setHealthBrandFilter(val),
+                ),
+                const SizedBox(width: 12),
+
+                // Dynamic Branch Dropdown Filter
+                DropdownButton<String?>(
+                  value: cameraProv.healthBranchFilter,
+                  underline: const SizedBox.shrink(),
+                  dropdownColor: colors.surfaceElevated,
+                  style: TextStyle(fontSize: 12, color: colors.textPrimary),
+                  hint: Text(context.tr('Filter by Branch'), style: TextStyle(color: colors.textMuted, fontSize: 12)),
+                  items: [
+                    DropdownMenuItem(value: null, child: Text(context.tr('All Branches'))),
+                    ...adminProv.branches.map(
+                      (br) => DropdownMenuItem(value: br.name, child: Text(br.name)),
+                    ),
+                  ],
+                  onChanged: (val) => cameraProv.setHealthBranchFilter(val),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Camera Health Grid
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: filteredCameras.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 2.1,
+            ),
+            itemBuilder: (context, index) {
+              final cam = filteredCameras[index];
+              return _CameraHealthCard(camera: cam, colors: colors);
+            },
+          ),
+        ],
       ),
     );
   }
 
   // 6. Branch Overview
-  Widget _buildBranchOverview(BuildContext context, List<BranchModel> branches) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Branch Operational Overview', style: AppTypography.h3),
-                TextButton.icon(
-                  onPressed: () => context.go('/branches'),
-                  icon: const Icon(Icons.arrow_forward, size: 14),
-                  label: const Text('Details'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: branches.length,
-              separatorBuilder: (_, __) => const Divider(height: 16),
-              itemBuilder: (context, index) {
-                final b = branches[index];
-                Color badgeColor = b.status == 'operational'
-                    ? AppColors.success
-                    : (b.status == 'alert' ? AppColors.warning : AppColors.error);
+  Widget _buildBranchOverview(BuildContext context, List<BranchModel> branches, AppSemanticColors colors) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.cardShadow,
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(context.tr('Branches'), style: AppTypography.h3Of(context).copyWith(fontSize: 15)),
+              TextButton.icon(
+                onPressed: () => context.go('/branches'),
+                icon: const Icon(Icons.arrow_forward, size: 14),
+                label: Text(context.tr('View')),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: branches.length,
+            separatorBuilder: (_, __) => Divider(height: 16, color: colors.borderSubtle),
+            itemBuilder: (context, index) {
+              final b = branches[index];
+              Color badgeColor = b.status == 'operational'
+                  ? colors.success
+                  : (b.status == 'alert' ? colors.warning : colors.error);
 
-                return Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Icon(Icons.storefront, color: AppColors.primary, size: 18),
+              return Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: colors.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(b.name, style: AppTypography.bodyMedium),
-                          Text(
-                            '${b.onlineCameraCount}/${b.cameraCount} Online • ${b.activeIncidentCount} Active Alert(s)',
-                            style: AppTypography.caption,
-                          ),
-                        ],
-                      ),
+                    child: Icon(Icons.storefront, color: colors.primary, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(b.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                        Text(
+                          '${b.onlineCameraCount}/${b.cameraCount} ${context.tr("Online")} • ${b.activeIncidentCount} ${context.tr("Active")}',
+                          style: AppTypography.captionOf(context).copyWith(fontSize: 11),
+                        ),
+                      ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: badgeColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        b.status.toUpperCase(),
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: badgeColor),
-                      ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: badgeColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
+                    child: Text(
+                      b.status.toUpperCase(),
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: badgeColor),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 
   // 7. Recent Activity (Audit Log)
-  Widget _buildRecentActivity(BuildContext context, List<AuditLogModel> logs) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Recent System & Security Activity', style: AppTypography.h3),
-                TextButton.icon(
-                  onPressed: () => context.go('/audit-logs'),
-                  icon: const Icon(Icons.arrow_forward, size: 14),
-                  label: const Text('Audit Log'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: logs.take(5).length,
-              separatorBuilder: (_, __) => const Divider(height: 16),
-              itemBuilder: (context, index) {
-                final log = logs[index];
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.only(top: 2),
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+  Widget _buildRecentActivity(BuildContext context, List<AuditLogModel> logs, AppSemanticColors colors) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.cardShadow,
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(context.tr('Audit Logs'), style: AppTypography.h3Of(context).copyWith(fontSize: 15)),
+              TextButton.icon(
+                onPressed: () => context.go('/audit-logs'),
+                icon: const Icon(Icons.arrow_forward, size: 14),
+                label: Text(context.tr('View')),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: logs.take(5).length,
+            separatorBuilder: (_, __) => Divider(height: 16, color: colors.borderSubtle),
+            itemBuilder: (context, index) {
+              final log = logs[index];
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(color: colors.primary, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          log.action,
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: colors.textPrimary),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${log.actorName} • ${DateFormat("HH:mm:ss").format(log.timestamp)}',
+                          style: AppTypography.captionOf(context).copyWith(fontSize: 11),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(log.action, style: AppTypography.bodyMedium.copyWith(fontSize: 13)),
-                          const SizedBox(height: 2),
-                          Text(
-                            'By ${log.actorName} • ${DateFormat("HH:mm:ss").format(log.timestamp)}',
-                            style: AppTypography.caption,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -722,27 +790,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 class _IncidentFeedCard extends StatelessWidget {
   final IncidentModel incident;
+  final AppSemanticColors colors;
   final VoidCallback onTap;
 
-  const _IncidentFeedCard({required this.incident, required this.onTap});
+  const _IncidentFeedCard({
+    required this.incident,
+    required this.colors,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final timeAgo = DateFormat('HH:mm:ss').format(incident.timestamp);
+    final accentColor = incident.isCritical ? colors.error : (incident.isWarning ? colors.warning : colors.info);
 
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: colors.surfaceSubtle,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: incident.isCritical ? AppColors.error.withOpacity(0.5) : AppColors.border,
-            width: incident.isCritical ? 1.5 : 1,
+          border: BorderDirectional(
+            start: BorderSide(color: accentColor, width: 4),
+            top: BorderSide(color: colors.borderSubtle),
+            bottom: BorderSide(color: colors.borderSubtle),
+            end: BorderSide(color: colors.borderSubtle),
           ),
         ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
             SeverityBadge(severity: incident.severity),
@@ -751,17 +827,31 @@ class _IncidentFeedCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('“${incident.title}”', style: AppTypography.h3.copyWith(fontSize: 14)),
+                  Text(
+                    context.tr(incident.title),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 3),
                   Text(
-                    '${incident.brandName ?? "Ego Fashion"}  •  ${incident.branchName}  •  Camera: ${incident.cameraName}',
-                    style: AppTypography.caption.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+                    '${incident.brandName ?? "Ego Fashion"} • ${incident.branchName} • ${incident.cameraName}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colors.textSecondary,
+                    ),
                   ),
                   if (incident.durationSeconds != null) ...[
                     const SizedBox(height: 3),
                     Text(
-                      '“Empty for ${(incident.durationSeconds! / 60).toStringAsFixed(0)} minutes (${incident.durationSeconds}s)”',
-                      style: const TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.bold),
+                      '${context.tr("Empty for")} ${(incident.durationSeconds! / 60).toStringAsFixed(0)} ${context.tr("minutes")}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colors.warning,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ],
@@ -770,21 +860,21 @@ class _IncidentFeedCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(timeAgo, style: AppTypography.code.copyWith(fontSize: 11)),
+                Text(timeAgo, style: AppTypography.code.copyWith(fontSize: 11, color: colors.textMuted)),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: colors.surface,
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: colors.border),
                   ),
                   child: Text(
-                    incident.status.displayName.toUpperCase(),
+                    context.tr(incident.status.displayName).toUpperCase(),
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
-                      color: incident.status == IncidentStatus.open ? AppColors.error : AppColors.success,
+                      color: incident.status == IncidentStatus.open ? colors.error : colors.success,
                     ),
                   ),
                 ),
@@ -801,34 +891,39 @@ class _HealthChip extends StatelessWidget {
   final String label;
   final bool isSelected;
   final Color? color;
+  final AppSemanticColors colors;
   final VoidCallback onTap;
 
   const _HealthChip({
     required this.label,
     required this.isSelected,
     this.color,
+    required this.colors,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppColors.primary;
+    final c = color ?? colors.primary;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(6),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: isSelected ? c.withOpacity(0.2) : AppColors.surface,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: isSelected ? c : AppColors.border, width: isSelected ? 1.5 : 1),
+          color: isSelected ? c.withOpacity(0.15) : colors.surface,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? c : colors.border,
+            width: isSelected ? 1.5 : 1,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 11,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            color: isSelected ? Colors.white : AppColors.textSecondary,
+            color: isSelected ? c : colors.textSecondary,
           ),
         ),
       ),
@@ -838,17 +933,18 @@ class _HealthChip extends StatelessWidget {
 
 class _CameraHealthCard extends StatelessWidget {
   final CameraModel camera;
+  final AppSemanticColors colors;
 
-  const _CameraHealthCard({required this.camera});
+  const _CameraHealthCard({required this.camera, required this.colors});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.border),
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: [
@@ -861,12 +957,19 @@ class _CameraHealthCard extends StatelessWidget {
               children: [
                 Text(
                   camera.name,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   '${camera.fps} FPS • ${camera.latencyMs}ms • ${camera.sourceType == CameraSourceType.rtsp ? "RTSP" : "P2P"}',
-                  style: AppTypography.code.copyWith(fontSize: 10, color: AppColors.textMuted),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: colors.textMuted,
+                  ),
                 ),
               ],
             ),

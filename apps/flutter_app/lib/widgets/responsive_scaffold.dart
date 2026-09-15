@@ -29,15 +29,17 @@ class ResponsiveScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDesktop = ResponsiveUtil.isDesktop(context);
+    final colors = context.colors;
     final themeProvider = context.watch<ThemeProvider>();
     final authProvider = context.watch<AuthProvider>();
     final localeProvider = context.watch<AppLocaleProvider>();
+    final user = authProvider.currentUser;
 
     Widget scaffoldContent;
 
     if (isDesktop) {
       scaffoldContent = Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: colors.background,
         body: Row(
           children: [
             EnterpriseSidebar(
@@ -51,31 +53,124 @@ class ResponsiveScaffold extends StatelessWidget {
                   Container(
                     height: 60,
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    decoration: const BoxDecoration(
-                      color: AppColors.surface,
-                      border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      border: Border(
+                        bottom: BorderSide(color: colors.border, width: 1),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        Text(localeProvider.tr(title), style: AppTypography.h2),
+                        // Title and Live Pulse Badge
+                        Row(
+                          children: [
+                            Text(
+                              context.tr(title),
+                              style: AppTypography.h2Of(context).copyWith(fontSize: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: colors.success.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: colors.success.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: colors.success,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    context.tr('System Operational'),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.success,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                         const Spacer(),
+
+                        // Optional custom action buttons
                         ...?actions,
+
+                        const SizedBox(width: 8),
+
+                        // Language Toggle
                         const LanguageToggleButton(),
-                        const SizedBox(width: 10),
+
+                        const SizedBox(width: 8),
+
+                        // Notification Bell
                         const NotificationBellWidget(),
+
                         const SizedBox(width: 4),
+
+                        // Dark/Light Theme Toggle
                         IconButton(
                           icon: Icon(
                             themeProvider.isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                             size: 20,
-                            color: AppColors.textSecondary,
+                            color: colors.textSecondary,
                           ),
-                          tooltip: localeProvider.tr('Toggle Theme'),
+                          tooltip: context.tr('Toggle Theme'),
                           onPressed: () => themeProvider.toggleTheme(),
                         ),
+
+                        const SizedBox(width: 8),
+
+                        // User Profile Pill in Header
+                        if (user != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: colors.surfaceSubtle,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: colors.borderSubtle),
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 12,
+                                  backgroundColor: colors.primaryContainer,
+                                  child: Text(
+                                    user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
+                                    style: TextStyle(
+                                      color: colors.primary,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  user.fullName,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: colors.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                   ),
+
+                  // Main Content Viewport
                   Expanded(
                     child: Stack(
                       children: [
@@ -97,25 +192,47 @@ class ResponsiveScaffold extends StatelessWidget {
       if (currentRoute == '/incidents') currentIndex = 2;
       if (currentRoute == '/settings') currentIndex = 3;
 
+      final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+
       scaffoldContent = Scaffold(
+        key: scaffoldKey,
+        backgroundColor: colors.background,
+        drawer: Drawer(
+          backgroundColor: colors.surface,
+          child: SafeArea(
+            child: EnterpriseSidebar(
+              currentRoute: currentRoute,
+              onNavigate: (route) {
+                Navigator.of(context).pop(); // Close drawer
+                context.go(route);
+              },
+            ),
+          ),
+        ),
         appBar: AppBar(
-          title: Text(localeProvider.tr(title), style: AppTypography.h3),
+          backgroundColor: colors.surface,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.menu, color: colors.textPrimary),
+            onPressed: () => scaffoldKey.currentState?.openDrawer(),
+          ),
+          title: Text(
+            context.tr(title),
+            style: AppTypography.h3Of(context).copyWith(fontSize: 16),
+          ),
           actions: [
             ...?actions,
             const LanguageToggleButton(),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             const NotificationBellWidget(),
             IconButton(
               icon: Icon(
                 themeProvider.isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                 size: 20,
+                color: colors.textSecondary,
               ),
+              tooltip: context.tr('Toggle Theme'),
               onPressed: () => themeProvider.toggleTheme(),
-            ),
-            IconButton(
-              icon: const Icon(Icons.logout, size: 20, color: AppColors.error),
-              tooltip: localeProvider.tr('Sign Out'),
-              onPressed: () => authProvider.logout(),
             ),
           ],
         ),
@@ -126,6 +243,8 @@ class ResponsiveScaffold extends StatelessWidget {
           ],
         ),
         bottomNavigationBar: NavigationBar(
+          backgroundColor: colors.surface,
+          indicatorColor: colors.primaryContainer,
           selectedIndex: currentIndex,
           onDestinationSelected: (idx) {
             switch (idx) {
@@ -145,24 +264,24 @@ class ResponsiveScaffold extends StatelessWidget {
           },
           destinations: [
             NavigationDestination(
-              icon: const Icon(Icons.dashboard_outlined),
-              selectedIcon: const Icon(Icons.dashboard),
-              label: localeProvider.tr('Overview'),
+              icon: Icon(Icons.dashboard_outlined, color: colors.textSecondary),
+              selectedIcon: Icon(Icons.dashboard, color: colors.primary),
+              label: context.tr('Overview'),
             ),
             NavigationDestination(
-              icon: const Icon(Icons.videocam_outlined),
-              selectedIcon: const Icon(Icons.videocam),
-              label: localeProvider.tr('Cameras'),
+              icon: Icon(Icons.videocam_outlined, color: colors.textSecondary),
+              selectedIcon: Icon(Icons.videocam, color: colors.primary),
+              label: context.tr('Cameras'),
             ),
             NavigationDestination(
-              icon: const Icon(Icons.notifications_active_outlined),
-              selectedIcon: const Icon(Icons.notifications_active),
-              label: localeProvider.tr('Incidents'),
+              icon: Icon(Icons.notifications_active_outlined, color: colors.textSecondary),
+              selectedIcon: Icon(Icons.notifications_active, color: colors.primary),
+              label: context.tr('Incidents'),
             ),
             NavigationDestination(
-              icon: const Icon(Icons.settings_outlined),
-              selectedIcon: const Icon(Icons.settings),
-              label: localeProvider.tr('Settings'),
+              icon: Icon(Icons.settings_outlined, color: colors.textSecondary),
+              selectedIcon: Icon(Icons.settings, color: colors.primary),
+              label: context.tr('Settings'),
             ),
           ],
         ),
@@ -175,4 +294,3 @@ class ResponsiveScaffold extends StatelessWidget {
     );
   }
 }
-

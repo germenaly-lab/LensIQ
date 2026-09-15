@@ -17,6 +17,8 @@ class NotificationPreferencesModel {
     this.allowedBranchIds = const [],
   });
 
+  bool get inAppPushEnabled => criticalAlerts || warningAlerts || infoAlerts || cameraOffline || aiEvents;
+
   NotificationPreferencesModel copyWith({
     bool? criticalAlerts,
     bool? warningAlerts,

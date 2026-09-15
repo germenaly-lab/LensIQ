@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
-import '../models/notification_item.dart';
+import '../core/localization/app_locale_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
 import 'notification_preferences_dialog.dart';
@@ -13,17 +13,27 @@ class NotificationBellWidget extends StatelessWidget {
 
   void _showNotificationPanel(BuildContext context) {
     final user = context.read<AuthProvider>().currentUser;
+    final colors = context.colors;
+    final isAr = context.isArabic;
     if (user == null) return;
 
     showDialog(
       context: context,
-      barrierColor: Colors.black54,
+      barrierColor: Colors.black45,
       builder: (ctx) {
         return Dialog(
-          backgroundColor: AppColors.surface,
-          alignment: Alignment.topRight,
-          insetPadding: const EdgeInsets.only(top: 60, right: 24, bottom: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: colors.surface,
+          alignment: isAr ? Alignment.topLeft : Alignment.topRight,
+          insetPadding: EdgeInsets.only(
+            top: 60,
+            right: isAr ? 0 : 24,
+            left: isAr ? 24 : 0,
+            bottom: 24,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: colors.border),
+          ),
           child: Container(
             width: 400,
             constraints: const BoxConstraints(maxHeight: 520),
@@ -40,15 +50,15 @@ class NotificationBellWidget extends StatelessWidget {
                     // Panel Header
                     Row(
                       children: [
-                        const Icon(Icons.notifications_active, color: AppColors.primaryLight, size: 20),
+                        Icon(Icons.notifications_active, color: colors.primary, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Row(
                             children: [
                               Flexible(
                                 child: Text(
-                                  'Alerts & Notifications',
-                                  style: AppTypography.h3,
+                                  context.tr('Alerts & Notifications'),
+                                  style: AppTypography.h3Of(context).copyWith(fontSize: 14),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -57,11 +67,11 @@ class NotificationBellWidget extends StatelessWidget {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: AppColors.error,
+                                    color: colors.error,
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
-                                    '$unread NEW',
+                                    '$unread ${context.tr("Active")}',
                                     style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                                   ),
                                 ),
@@ -71,8 +81,8 @@ class NotificationBellWidget extends StatelessWidget {
                         ),
                         // Preferences Gear Button
                         IconButton(
-                          icon: const Icon(Icons.settings_outlined, size: 18, color: Colors.white70),
-                          tooltip: 'Notification Preferences',
+                          icon: Icon(Icons.settings_outlined, size: 18, color: colors.textSecondary),
+                          tooltip: context.tr('Configure Preferences'),
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -87,7 +97,7 @@ class NotificationBellWidget extends StatelessWidget {
                         const SizedBox(width: 4),
                         // Close
                         IconButton(
-                          icon: const Icon(Icons.close, size: 18, color: Colors.white70),
+                          icon: Icon(Icons.close, size: 18, color: colors.textSecondary),
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -98,20 +108,28 @@ class NotificationBellWidget extends StatelessWidget {
                     const SizedBox(height: 8),
 
                     // Actions Bar: Mark All Read
-                    if (items.isNotEmpty && unread > 0)
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () => notifProv.markAllAsRead(user),
-                          icon: const Icon(Icons.done_all, size: 14, color: AppColors.primaryLight),
-                          label: const Text(
-                            'Mark all as read',
-                            style: TextStyle(fontSize: 11, color: AppColors.primaryLight),
+                    if (items.isNotEmpty)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${items.length} ${context.tr("Notifications")}',
+                            style: TextStyle(fontSize: 11, color: colors.textMuted),
                           ),
-                        ),
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                            ),
+                            onPressed: () => notifProv.markAllAsRead(user),
+                            child: Text(
+                              context.tr('Mark all as read'),
+                              style: TextStyle(fontSize: 11, color: colors.primary),
+                            ),
+                          ),
+                        ],
                       ),
-
-                    const Divider(height: 12),
+                    Divider(height: 12, color: colors.borderSubtle),
 
                     // Notifications List
                     Expanded(
@@ -120,16 +138,11 @@ class NotificationBellWidget extends StatelessWidget {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.notifications_none, size: 40, color: Colors.white24),
+                                  Icon(Icons.notifications_none, size: 36, color: colors.textMuted),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'No security notifications',
-                                    style: AppTypography.bodySecondary.copyWith(fontSize: 12),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'All surveillance zones operating normally',
-                                    style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 10),
+                                    context.tr('No new notifications'),
+                                    style: TextStyle(color: colors.textMuted, fontSize: 12),
                                   ),
                                 ],
                               ),
@@ -137,19 +150,96 @@ class NotificationBellWidget extends StatelessWidget {
                           : ListView.separated(
                               shrinkWrap: true,
                               itemCount: items.length,
-                              separatorBuilder: (_, __) => const Divider(height: 8, color: Colors.white10),
+                              separatorBuilder: (_, __) => Divider(height: 8, color: colors.borderSubtle),
                               itemBuilder: (context, index) {
-                                final item = items[index];
-                                return _NotificationListTile(
-                                  item: item,
+                                final notif = items[index];
+                                final isCrit = notif.isCritical;
+                                final itemColor = isCrit ? colors.error : colors.warning;
+
+                                return InkWell(
+                                  borderRadius: BorderRadius.circular(8),
                                   onTap: () {
-                                    // 1. Mark as read
-                                    notifProv.markAsRead(user, item.id);
-                                    // 2. Dismiss panel
+                                    notifProv.markAsRead(user, notif.id);
                                     Navigator.of(ctx).pop();
-                                    // 3. Navigate to corresponding incident!
                                     context.go('/incidents');
                                   },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: notif.isRead ? Colors.transparent : colors.primary.withOpacity(0.06),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          margin: const EdgeInsets.only(top: 2),
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: itemColor.withOpacity(0.15),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            isCrit ? Icons.warning_amber_rounded : Icons.notifications,
+                                            size: 14,
+                                            color: itemColor,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      notif.title,
+                                                      style: TextStyle(
+                                                        color: colors.textPrimary,
+                                                        fontSize: 12,
+                                                        fontWeight: notif.isRead ? FontWeight.normal : FontWeight.bold,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  if (!notif.isRead)
+                                                    Container(
+                                                      width: 6,
+                                                      height: 6,
+                                                      decoration: BoxDecoration(
+                                                        color: colors.primary,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                notif.body,
+                                                style: TextStyle(
+                                                  color: colors.textSecondary,
+                                                  fontSize: 11,
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                context.tr('Tap to inspect'),
+                                                style: TextStyle(
+                                                  color: colors.primary,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 );
                               },
                             ),
@@ -166,34 +256,43 @@ class NotificationBellWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount = context.watch<NotificationProvider>().unreadCount;
+    final notifProv = context.watch<NotificationProvider>();
+    final unreadCount = notifProv.unreadCount;
+    final colors = context.colors;
 
     return Stack(
-      clipBehavior: Clip.none,
+      alignment: Alignment.center,
       children: [
         IconButton(
-          icon: const Icon(Icons.notifications_outlined, size: 20),
-          tooltip: 'Security Notifications ($unreadCount)',
+          icon: Icon(
+            unreadCount > 0 ? Icons.notifications_active : Icons.notifications_outlined,
+            size: 20,
+            color: unreadCount > 0 ? colors.warning : colors.textSecondary,
+          ),
+          tooltip: context.tr('Alerts & Notifications'),
           onPressed: () => _showNotificationPanel(context),
         ),
         if (unreadCount > 0)
           Positioned(
-            top: 6,
-            right: 6,
-            child: Container(
-              padding: const EdgeInsets.all(3),
-              decoration: const BoxDecoration(
-                color: AppColors.error,
-                shape: BoxShape.circle,
-              ),
-              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-              child: Center(
-                child: Text(
-                  unreadCount > 99 ? '99+' : '$unreadCount',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
+            top: 8,
+            right: 8,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: colors.error,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: colors.surface, width: 1.5),
+                ),
+                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                child: Center(
+                  child: Text(
+                    unreadCount > 9 ? '9+' : '$unreadCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -201,117 +300,5 @@ class NotificationBellWidget extends StatelessWidget {
           ),
       ],
     );
-  }
-}
-
-class _NotificationListTile extends StatelessWidget {
-  final NotificationItem item;
-  final VoidCallback onTap;
-
-  const _NotificationListTile({required this.item, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final Color iconColor = item.isCritical
-        ? AppColors.error
-        : (item.isWarning ? AppColors.warning : AppColors.info);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        decoration: BoxDecoration(
-          color: item.isRead ? Colors.transparent : AppColors.surfaceLight.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(6),
-          border: item.isRead
-              ? null
-              : Border.all(color: AppColors.primary.withOpacity(0.3), width: 0.8),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                item.isCritical ? Icons.warning_amber_rounded : Icons.info_outline,
-                color: iconColor,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.title,
-                          style: TextStyle(
-                            color: item.isRead ? Colors.white70 : Colors.white,
-                            fontSize: 12,
-                            fontWeight: item.isRead ? FontWeight.w500 : FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (!item.isRead)
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    item.body,
-                    style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 11),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        _formatTime(item.sentAt),
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 9),
-                      ),
-                      const Spacer(),
-                      Text(
-                        'Tap to inspect',
-                        style: TextStyle(
-                          color: AppColors.primaryLight.withOpacity(0.8),
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatTime(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
   }
 }

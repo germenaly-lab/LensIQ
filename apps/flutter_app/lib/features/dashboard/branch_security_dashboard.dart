@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/localization/app_locale_provider.dart';
 import '../../core/utils/responsive_util.dart';
 import '../../models/user_profile.dart';
 import '../../models/camera.dart';
@@ -121,8 +122,10 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
       );
     }
 
+    final colors = context.colors;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: RefreshIndicator(
         onRefresh: () async => _loadData(),
         child: content,
@@ -131,24 +134,24 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
           ? BottomNavigationBar(
               currentIndex: _mobileNavIndex,
               onTap: (idx) => setState(() => _mobileNavIndex = idx),
-              backgroundColor: AppColors.surface,
-              selectedItemColor: AppColors.primary,
-              unselectedItemColor: AppColors.textSecondary,
+              backgroundColor: colors.surface,
+              selectedItemColor: colors.primary,
+              unselectedItemColor: colors.textSecondary,
               type: BottomNavigationBarType.fixed,
               selectedLabelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
               unselectedLabelStyle: const TextStyle(fontSize: 10),
               items: [
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.security),
-                  label: 'Guard Feed',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.security),
+                  label: context.tr('Guard Feed'),
                 ),
                 BottomNavigationBarItem(
                   icon: Badge(
                     label: Text('${branchCameras.length}'),
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: colors.primary,
                     child: const Icon(Icons.videocam_outlined),
                   ),
-                  label: 'Live Cams',
+                  label: context.tr('Live Cams'),
                 ),
                 BottomNavigationBarItem(
                   icon: Badge(
@@ -157,11 +160,11 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
                     backgroundColor: AppColors.error,
                     child: const Icon(Icons.notifications_active_outlined),
                   ),
-                  label: 'Action Queue',
+                  label: context.tr('Action Queue'),
                 ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.health_and_safety_outlined),
-                  label: 'Health',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.health_and_safety_outlined),
+                  label: context.tr('Health'),
                 ),
               ],
             )
@@ -248,9 +251,9 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
               children: [
                 Row(
                   children: [
-                    const Text(
-                      'CRITICAL ALERT IN PROGRESS',
-                      style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.8),
+                    Text(
+                      context.tr('CRITICAL ALERT IN PROGRESS'),
+                      style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.8),
                     ),
                     const SizedBox(width: 8),
                     Container(
@@ -261,8 +264,8 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(topCritical.title, style: AppTypography.h3.copyWith(color: Colors.white)),
-                Text(topCritical.description, style: AppTypography.bodySmall.copyWith(color: Colors.white70)),
+                Text(topCritical.title, style: AppTypography.h3Of(context).copyWith(color: Colors.white)),
+                Text(topCritical.description, style: AppTypography.bodySmallOf(context).copyWith(color: Colors.white70)),
               ],
             ),
           ),
@@ -270,7 +273,7 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
           ElevatedButton.icon(
             onPressed: () => provider.acknowledgeIncident(topCritical.id),
             icon: const Icon(Icons.check, size: 16),
-            label: const Text('ACKNOWLEDGE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            label: Text(context.tr('ACKNOWLEDGE'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
@@ -283,13 +286,14 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
   }
 
   Widget _buildBranchStatusHeader(UserProfile user, List<CameraModel> cameras, bool isMobile) {
+    final colors = context.colors;
     final onlineCount = cameras.where((c) => c.isOnline).length;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: [
@@ -307,11 +311,11 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(user.branchName ?? 'Branch Security Console', style: isMobile ? AppTypography.h3 : AppTypography.h2),
+                Text(user.branchName ?? context.tr('Branch Security Console'), style: isMobile ? AppTypography.h3Of(context) : AppTypography.h2Of(context)),
                 const SizedBox(height: 2),
                 Text(
-                  'Officer: ${user.fullName} • Shift: Active Monitoring • $onlineCount/${cameras.length} Cameras Active',
-                  style: AppTypography.caption,
+                  '${context.tr('Officer')}: ${user.fullName} • ${context.tr('Shift: Active Monitoring')} • $onlineCount/${cameras.length} ${context.tr('Active')}',
+                  style: AppTypography.captionOf(context),
                 ),
               ],
             ),
@@ -324,10 +328,10 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
               border: Border.all(color: AppColors.success.withOpacity(0.3)),
             ),
             child: Row(
-              children: const [
-                Icon(Icons.fiber_manual_record, color: AppColors.success, size: 10),
-                SizedBox(width: 6),
-                Text('ON DUTY', style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.bold)),
+              children: [
+                const Icon(Icons.fiber_manual_record, color: AppColors.success, size: 10),
+                const SizedBox(width: 6),
+                Text(context.tr('ON DUTY'), style: const TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -342,6 +346,7 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
     required int cashierCount,
     required int unusualCount,
   }) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -349,12 +354,12 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
           children: [
             const Icon(Icons.bolt, color: AppColors.warning, size: 18),
             const SizedBox(width: 6),
-            const Text('Fast Triage (Quick Identification)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary, letterSpacing: 0.5)),
+            Text(context.tr('Fast Triage (Quick Identification)'), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colors.textSecondary, letterSpacing: 0.5)),
             const Spacer(),
             if (_activeTriage != SecurityTriageCategory.all)
               GestureDetector(
                 onTap: () => setState(() => _activeTriage = SecurityTriageCategory.all),
-                child: const Text('Show All', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+                child: Text(context.tr('Show All'), style: TextStyle(color: colors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
               ),
           ],
         ),
@@ -408,6 +413,7 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
     required Color color,
     required IconData icon,
   }) {
+    final colors = context.colors;
     final isSelected = _activeTriage == category;
     return InkWell(
       onTap: () {
@@ -420,10 +426,10 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.25) : AppColors.surface,
+          color: isSelected ? color.withOpacity(0.25) : colors.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? color : AppColors.border,
+            color: isSelected ? color : colors.border,
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -431,7 +437,7 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
           children: [
             Icon(icon, size: 16, color: color),
             const SizedBox(width: 8),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, color: Colors.white)),
+            Text(context.tr(label), style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, color: colors.textPrimary)),
             const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -458,9 +464,9 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
           children: [
             const Icon(Icons.videocam, color: AppColors.primary, size: 18),
             const SizedBox(width: 8),
-            Text('Branch Live Feeds (${cameras.length})', style: AppTypography.h3),
+            Text('${context.tr('Branch Live Feeds')} (${cameras.length})', style: AppTypography.h3Of(context)),
             const Spacer(),
-            Text('${cameras.where((c) => c.isOnline).length} Active', style: AppTypography.caption),
+            Text('${cameras.where((c) => c.isOnline).length} ${context.tr('Active')}', style: AppTypography.captionOf(context)),
           ],
         ),
         const SizedBox(height: 12),
@@ -494,12 +500,13 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
   }
 
   Widget _buildCameraCard(CameraModel cam) {
+    final colors = context.colors;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: cam.isOnline ? AppColors.border : AppColors.warning.withOpacity(0.5),
+          color: cam.isOnline ? colors.border : AppColors.warning.withOpacity(0.5),
         ),
       ),
       child: Column(
@@ -549,7 +556,7 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: AppColors.primary,
+                          color: colors.primary,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Icon(Icons.fullscreen, color: Colors.white, size: 16),
@@ -568,12 +575,12 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(cam.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                      Text(cam.locationDescription ?? 'Station area', style: AppTypography.caption.copyWith(fontSize: 10), overflow: TextOverflow.ellipsis),
+                      Text(cam.name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colors.textPrimary), overflow: TextOverflow.ellipsis),
+                      Text(cam.locationDescription ?? 'Station area', style: AppTypography.captionOf(context).copyWith(fontSize: 10), overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
-                Text(cam.isOnline ? '${cam.fps} FPS' : 'N/A', style: AppTypography.caption.copyWith(fontSize: 10)),
+                Text(cam.isOnline ? '${cam.fps} FPS' : 'N/A', style: AppTypography.captionOf(context).copyWith(fontSize: 10)),
               ],
             ),
           ),
@@ -583,15 +590,16 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
   }
 
   void _openLiveStreamDialog(CameraModel cam) {
+    final colors = context.colors;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         title: Row(
           children: [
-            const Icon(Icons.videocam, color: AppColors.primary),
+            Icon(Icons.videocam, color: colors.primary),
             const SizedBox(width: 8),
-            Text(cam.name),
+            Text(cam.name, style: TextStyle(color: colors.textPrimary)),
             const Spacer(),
             StatusBadge(status: cam.status),
           ],
@@ -609,29 +617,30 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.play_circle_outline, size: 48, color: AppColors.primary),
+                    Icon(Icons.play_circle_outline, size: 48, color: colors.primary),
                     const SizedBox(height: 8),
-                    Text('Live Stream Connected (WebRTC / HLS)', style: AppTypography.bodySmall),
-                    Text('Latency: ${cam.latencyMs}ms • Source: ${cam.sourceTypeDisplayName}', style: AppTypography.caption),
+                    Text(context.tr('Live Stream Connected (WebRTC / HLS)'), style: AppTypography.bodySmallOf(context)),
+                    Text('Latency: ${cam.latencyMs}ms • Source: ${cam.sourceTypeDisplayName}', style: AppTypography.captionOf(context)),
                   ],
                 ),
               ),
               Positioned(
                 bottom: 8,
                 left: 12,
-                child: Text('LIVE • AI VISION ANALYSIS ACTIVE', style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                child: Text(context.tr('LIVE • AI VISION ANALYSIS ACTIVE'), style: const TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close Stream')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(context.tr('Close Stream'), style: TextStyle(color: colors.primary))),
         ],
       ),
     );
   }
 
   Widget _buildActionQueueSection(List<IncidentModel> incidents, IncidentProvider provider) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -639,7 +648,7 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
           children: [
             const Icon(Icons.flash_on, color: AppColors.warning, size: 20),
             const SizedBox(width: 8),
-            Text('Action Queue — Active Incidents (${incidents.length})', style: AppTypography.h3),
+            Text('${context.tr('Action Queue — Active Incidents')} (${incidents.length})', style: AppTypography.h3Of(context)),
           ],
         ),
         const SizedBox(height: 12),
@@ -647,12 +656,12 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: colors.surface,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: colors.border),
             ),
             child: Center(
-              child: Text('All clear in current triage filter. No open alerts.', style: AppTypography.bodySmall),
+              child: Text(context.tr('All clear in current triage filter. No open alerts.'), style: AppTypography.bodySmallOf(context)),
             ),
           )
         else
@@ -671,13 +680,14 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
   }
 
   Widget _buildSecurityIncidentCard(IncidentModel inc, IncidentProvider provider) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: inc.isCritical ? AppColors.error : AppColors.border,
+          color: inc.isCritical ? AppColors.error : colors.border,
           width: inc.isCritical ? 1.5 : 1,
         ),
       ),
@@ -691,32 +701,32 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
               Expanded(
                 child: Text(
                   inc.title,
-                  style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: AppTypography.bodyMediumOf(context).copyWith(fontWeight: FontWeight.bold, fontSize: 14, color: colors.textPrimary),
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.background,
+                  color: colors.background,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   '${inc.timestamp.hour.toString().padLeft(2, '0')}:${inc.timestamp.minute.toString().padLeft(2, '0')}',
-                  style: AppTypography.caption,
+                  style: AppTypography.captionOf(context),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(inc.description, style: AppTypography.bodySmall),
+          Text(inc.description, style: AppTypography.bodySmallOf(context)),
           const SizedBox(height: 12),
           Row(
             children: [
-              Icon(Icons.videocam, size: 14, color: AppColors.textSecondary),
+              Icon(Icons.videocam, size: 14, color: colors.textSecondary),
               const SizedBox(width: 4),
-              Text(inc.cameraName, style: AppTypography.caption),
+              Text(inc.cameraName, style: AppTypography.captionOf(context)),
               const Spacer(),
-              Text('Confidence: ${(((inc.confidence ?? 0.95) * 100)).toStringAsFixed(0)}%', style: AppTypography.caption),
+              Text('Confidence: ${(((inc.confidence ?? 0.95) * 100)).toStringAsFixed(0)}%', style: AppTypography.captionOf(context)),
             ],
           ),
           const SizedBox(height: 14),
@@ -728,9 +738,9 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
                   child: ElevatedButton.icon(
                     onPressed: () => provider.acknowledgeIncident(inc.id),
                     icon: const Icon(Icons.check, size: 16),
-                    label: const Text('ACKNOWLEDGE'),
+                    label: Text(context.tr('ACKNOWLEDGE')),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: colors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -741,7 +751,7 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
                 child: OutlinedButton.icon(
                   onPressed: () => _showQuickResolveSheet(inc, provider),
                   icon: const Icon(Icons.done_all, size: 16),
-                  label: const Text('RESOLVE'),
+                  label: Text(context.tr('RESOLVE')),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     side: const BorderSide(color: AppColors.success),
@@ -752,8 +762,8 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
               const SizedBox(width: 8),
               IconButton(
                 onPressed: () => provider.markFalsePositive(inc.id),
-                icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 18),
-                tooltip: 'False Positive',
+                icon: Icon(Icons.close, color: colors.textSecondary, size: 18),
+                tooltip: context.tr('False Positive'),
               ),
             ],
           ),
@@ -763,10 +773,11 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
   }
 
   void _showQuickResolveSheet(IncidentModel inc, IncidentProvider provider) {
-    final noteController = TextEditingController(text: 'Checked and cleared by security patrol.');
+    final colors = context.colors;
+    final noteController = TextEditingController(text: context.tr('Checked and cleared by security patrol.'));
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(20),
@@ -774,11 +785,11 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Resolve: ${inc.title}', style: AppTypography.h3),
+            Text('${context.tr('Resolve')}: ${inc.title}', style: AppTypography.h3Of(context)),
             const SizedBox(height: 8),
             TextField(
               controller: noteController,
-              decoration: const InputDecoration(labelText: 'Officer Resolution Notes'),
+              decoration: InputDecoration(labelText: context.tr('Officer Resolution Notes')),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -790,7 +801,7 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
                 minimumSize: const Size(double.infinity, 44),
                 backgroundColor: AppColors.success,
               ),
-              child: const Text('Confirm Resolved', style: TextStyle(color: Colors.white)),
+              child: Text(context.tr('Confirm Resolved'), style: const TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -799,20 +810,21 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
   }
 
   Widget _buildRecentIncidentsSection(List<IncidentModel> recent) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Recent Branch History', style: AppTypography.h3),
+          Text(context.tr('Recent Branch History'), style: AppTypography.h3Of(context)),
           const Divider(height: 20),
           if (recent.isEmpty)
-            const Text('No resolved branch history today.', style: AppTypography.caption)
+            Text(context.tr('No resolved branch history today.'), style: AppTypography.captionOf(context))
           else
             ListView.separated(
               shrinkWrap: true,
@@ -825,8 +837,8 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
                   children: [
                     const Icon(Icons.check_circle, size: 14, color: AppColors.success),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(r.title, style: AppTypography.bodySmall)),
-                    Text('RESOLVED', style: TextStyle(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.bold)),
+                    Expanded(child: Text(r.title, style: AppTypography.bodySmallOf(context))),
+                    Text(context.tr('RESOLVED'), style: const TextStyle(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
                 );
               },
@@ -859,6 +871,7 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
   }
 
   Widget _buildCameraHealthView(List<CameraModel> cameras) {
+    final colors = context.colors;
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: cameras.length,
@@ -868,9 +881,9 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
         return Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: colors.surface,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: colors.border),
           ),
           child: Row(
             children: [
@@ -880,12 +893,12 @@ class _BranchSecurityDashboardState extends State<BranchSecurityDashboard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(cam.name, style: AppTypography.bodyMedium),
-                    Text('${cam.sourceTypeDisplayName} • ${cam.locationDescription}', style: AppTypography.caption),
+                    Text(cam.name, style: AppTypography.bodyMediumOf(context)),
+                    Text('${cam.sourceTypeDisplayName} • ${cam.locationDescription}', style: AppTypography.captionOf(context)),
                   ],
                 ),
               ),
-              Text(cam.isOnline ? '${cam.latencyMs}ms' : 'OFFLINE', style: AppTypography.caption),
+              Text(cam.isOnline ? '${cam.latencyMs}ms' : context.tr('Offline'), style: AppTypography.captionOf(context)),
             ],
           ),
         );

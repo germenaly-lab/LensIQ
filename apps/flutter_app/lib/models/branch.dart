@@ -53,4 +53,30 @@ class BranchModel {
         'active_incident_count': activeIncidentCount,
         'status': status,
       };
+
+  BranchModel copyWith({
+    String? id,
+    String? companyId,
+    String? brandId,
+    String? name,
+    String? code,
+    String? address,
+    int? cameraCount,
+    int? onlineCameraCount,
+    int? activeIncidentCount,
+    String? status,
+  }) {
+    return BranchModel(
+      id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
+      brandId: brandId ?? this.brandId,
+      name: name ?? this.name,
+      code: code ?? this.code,
+      address: address ?? this.address,
+      cameraCount: cameraCount ?? this.cameraCount,
+      onlineCameraCount: onlineCameraCount ?? this.onlineCameraCount,
+      activeIncidentCount: activeIncidentCount ?? this.activeIncidentCount,
+      status: status ?? this.status,
+    );
+  }
 }

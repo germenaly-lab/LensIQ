@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
+import '../core/localization/app_locale_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
 
@@ -13,11 +14,12 @@ class ForegroundNotificationBanner extends StatelessWidget {
     final notifProv = context.watch<NotificationProvider>();
     final notification = notifProv.latestForegroundNotification;
     final user = context.watch<AuthProvider>().currentUser;
+    final colors = context.colors;
 
     if (notification == null) return const SizedBox.shrink();
 
     final isCritical = notification.isCritical;
-    final bannerColor = isCritical ? AppColors.error : AppColors.warning;
+    final bannerColor = isCritical ? colors.error : colors.warning;
 
     return Positioned(
       top: 16,
@@ -26,15 +28,16 @@ class ForegroundNotificationBanner extends StatelessWidget {
       child: Material(
         elevation: 8,
         borderRadius: BorderRadius.circular(10),
-        color: AppColors.surface,
+        color: colors.surface,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
+            color: colors.surface,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: bannerColor, width: 1.2),
             boxShadow: [
               BoxShadow(
-                color: bannerColor.withOpacity(0.25),
+                color: bannerColor.withOpacity(0.2),
                 blurRadius: 12,
                 spreadRadius: 2,
               ),
@@ -61,9 +64,9 @@ class ForegroundNotificationBanner extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      notification.title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      context.tr(notification.title),
+                      style: TextStyle(
+                        color: colors.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
@@ -73,7 +76,7 @@ class ForegroundNotificationBanner extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       notification.body,
-                      style: const TextStyle(color: Colors.white70, fontSize: 11),
+                      style: TextStyle(color: colors.textSecondary, fontSize: 11),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -84,6 +87,7 @@ class ForegroundNotificationBanner extends StatelessWidget {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: bannerColor,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                 ),
@@ -92,16 +96,15 @@ class ForegroundNotificationBanner extends StatelessWidget {
                     notifProv.markAsRead(user, notification.id);
                   }
                   notifProv.dismissForegroundBanner();
-                  // Open corresponding incident!
                   context.go('/incidents');
                 },
-                child: const Text('View Alert'),
+                child: Text(context.tr('Tap to inspect')),
               ),
               const SizedBox(width: 6),
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                icon: const Icon(Icons.close, size: 16, color: Colors.white60),
+                icon: Icon(Icons.close, size: 16, color: colors.textMuted),
                 onPressed: () => notifProv.dismissForegroundBanner(),
               ),
             ],

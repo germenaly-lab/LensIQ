@@ -3,12 +3,12 @@ import 'app_colors.dart';
 
 /**
  * Enterprise Typography System.
- * Clean, readable, dense information layout without excessive ornamentation.
+ * Clean, readable, dense information layout with responsive context-aware contrast.
  */
 class AppTypography {
   static const String fontFamily = 'Roboto';
 
-  // Headlines
+  // Headlines (Static defaults for backward compatibility)
   static const TextStyle h1 = TextStyle(
     fontSize: 26,
     fontWeight: FontWeight.w700,
@@ -65,11 +65,104 @@ class AppTypography {
     letterSpacing: 0.5,
   );
 
-  // Code / Mono for Stream IDs and URLs
+  // Code / Mono
   static const TextStyle code = TextStyle(
     fontFamily: 'monospace',
     fontSize: 12,
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
   );
+
+  // --------------------------------------------------------------------------
+  // Theme & Context-Aware Dynamic Styles
+  // Automatically adjust color and line height based on light/dark mode
+  // --------------------------------------------------------------------------
+  static TextStyle h1Of(BuildContext context, {Color? color}) {
+    final colors = context.colors;
+    return TextStyle(
+      fontSize: 26,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -0.5,
+      color: color ?? colors.textPrimary,
+      height: 1.25,
+    );
+  }
+
+  static TextStyle h2Of(BuildContext context, {Color? color}) {
+    final colors = context.colors;
+    return TextStyle(
+      fontSize: 20,
+      fontWeight: FontWeight.w600,
+      letterSpacing: -0.3,
+      color: color ?? colors.textPrimary,
+      height: 1.3,
+    );
+  }
+
+  static TextStyle h3Of(BuildContext context, {Color? color}) {
+    final colors = context.colors;
+    return TextStyle(
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      color: color ?? colors.textPrimary,
+      height: 1.35,
+    );
+  }
+
+  static TextStyle bodyOf(BuildContext context, {Color? color, FontWeight? fontWeight}) {
+    final colors = context.colors;
+    return TextStyle(
+      fontSize: 14,
+      fontWeight: fontWeight ?? FontWeight.w400,
+      color: color ?? colors.textPrimary,
+      height: 1.45,
+    );
+  }
+
+  static TextStyle bodyMediumOf(BuildContext context, {Color? color}) {
+    return bodyOf(context, color: color, fontWeight: FontWeight.w500);
+  }
+
+  static TextStyle bodySecondaryOf(BuildContext context, {Color? color}) {
+    final colors = context.colors;
+    return TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w400,
+      color: color ?? colors.textSecondary,
+      height: 1.35,
+    );
+  }
+
+  static TextStyle bodySmallOf(BuildContext context, {Color? color}) {
+    return bodySecondaryOf(context, color: color);
+  }
+
+  static TextStyle captionOf(BuildContext context, {Color? color, FontWeight? fontWeight}) {
+    final colors = context.colors;
+    return TextStyle(
+      fontSize: 12,
+      fontWeight: fontWeight ?? FontWeight.w400,
+      color: color ?? colors.textMuted,
+      height: 1.3,
+    );
+  }
+
+  static TextStyle badgeOf(BuildContext context, {Color? color}) {
+    return TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.4,
+      color: color ?? context.colors.textPrimary,
+    );
+  }
+
+  static TextStyle codeOf(BuildContext context, {Color? color}) {
+    final colors = context.colors;
+    return TextStyle(
+      fontFamily: 'monospace',
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      color: color ?? colors.textSecondary,
+    );
+  }
 }

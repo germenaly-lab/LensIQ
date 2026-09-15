@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/localization/app_locale_provider.dart';
 import '../../../models/camera.dart';
 
 class AddCameraDialog extends StatefulWidget {
@@ -70,9 +71,13 @@ class _AddCameraDialogState extends State<AddCameraDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Dialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      backgroundColor: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: colors.border),
+      ),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 580),
         padding: const EdgeInsets.all(24),
@@ -92,30 +97,30 @@ class _AddCameraDialogState extends State<AddCameraDialog> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.15),
+                            color: colors.primary.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.add_a_photo_outlined, color: AppColors.primary, size: 20),
+                          child: Icon(Icons.add_a_photo_outlined, color: colors.primary, size: 20),
                         ),
                         const SizedBox(width: 12),
-                        const Text('Provision New Camera', style: AppTypography.h2),
+                        Text(context.tr('Provision New Camera'), style: AppTypography.h2Of(context)),
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, size: 20, color: AppColors.textMuted),
+                      icon: Icon(Icons.close, size: 20, color: colors.textSecondary),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Register a camera into the enterprise platform. Sensitive credentials are encrypted and stored into the Vault.',
-                  style: AppTypography.caption,
+                  context.tr('Register a camera into the enterprise platform. Sensitive credentials are encrypted and stored into the Vault.'),
+                  style: AppTypography.captionOf(context),
                 ),
-                const Divider(height: 24),
+                Divider(height: 24, color: colors.border),
 
                 // Source Type Selector Tabs
-                const Text('Video Source Architecture', style: AppTypography.bodyMedium),
+                Text(context.tr('Video Source Architecture'), style: AppTypography.bodyMediumOf(context)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -145,13 +150,13 @@ class _AddCameraDialogState extends State<AddCameraDialog> {
                 const SizedBox(height: 18),
 
                 // General Information
-                const Text('Camera Details', style: AppTypography.bodyMedium),
+                Text(context.tr('Camera Details'), style: AppTypography.bodyMediumOf(context)),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _nameController,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                  decoration: const InputDecoration(
-                    labelText: 'Camera Name',
+                  style: TextStyle(color: colors.textPrimary, fontSize: 14),
+                  decoration: InputDecoration(
+                    labelText: context.tr('Camera Name'),
                     hintText: 'e.g. Cashier 02, Drive-Thru Lane 1',
                   ),
                   validator: (v) => v == null || v.isEmpty ? 'Camera name is required' : null,
@@ -159,9 +164,9 @@ class _AddCameraDialogState extends State<AddCameraDialog> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _locationController,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                  decoration: const InputDecoration(
-                    labelText: 'Location / Zone Description',
+                  style: TextStyle(color: colors.textPrimary, fontSize: 14),
+                  decoration: InputDecoration(
+                    labelText: context.tr('Location / Zone Description'),
                     hintText: 'e.g. Counter 2 - Front Checkout Area',
                   ),
                 ),
@@ -169,11 +174,11 @@ class _AddCameraDialogState extends State<AddCameraDialog> {
 
                 // Source-Specific Configuration Fields
                 if (_sourceType == CameraSourceType.rtsp) ...[
-                  const Text('RTSP Connection Settings', style: AppTypography.bodyMedium),
+                  Text(context.tr('RTSP Connection Settings'), style: AppTypography.bodyMediumOf(context)),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _rtspUrlController,
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontFamily: 'monospace'),
+                    style: TextStyle(color: colors.textPrimary, fontSize: 13, fontFamily: 'monospace'),
                     decoration: const InputDecoration(
                       labelText: 'RTSP Stream URL',
                       hintText: 'rtsp://username:password@ip:554/live/ch1',
@@ -181,16 +186,16 @@ class _AddCameraDialogState extends State<AddCameraDialog> {
                     validator: (v) => v == null || v.isEmpty ? 'RTSP URL is required' : null,
                   ),
                 ] else ...[
-                  const Text('Hikvision P2P Cloud Settings', style: AppTypography.bodyMedium),
+                  Text(context.tr('Hikvision P2P Cloud Settings'), style: AppTypography.bodyMediumOf(context)),
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
                         child: TextFormField(
                           controller: _hikDeviceIdController,
-                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                          decoration: const InputDecoration(
-                            labelText: 'Device Identifier',
+                          style: TextStyle(color: colors.textPrimary, fontSize: 14),
+                          decoration: InputDecoration(
+                            labelText: context.tr('Device Identifier'),
                             hintText: 'e.g. HIK-BAY-4491',
                           ),
                           validator: (v) => v == null || v.isEmpty ? 'Device ID is required' : null,
@@ -200,9 +205,9 @@ class _AddCameraDialogState extends State<AddCameraDialog> {
                       Expanded(
                         child: TextFormField(
                           controller: _hikSerialController,
-                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                          decoration: const InputDecoration(
-                            labelText: 'Serial Number',
+                          style: TextStyle(color: colors.textPrimary, fontSize: 14),
+                          decoration: InputDecoration(
+                            labelText: context.tr('Serial Number'),
                             hintText: 'e.g. SER-BAY-99182',
                           ),
                         ),
@@ -216,9 +221,9 @@ class _AddCameraDialogState extends State<AddCameraDialog> {
                         child: TextFormField(
                           controller: _hikChannelController,
                           keyboardType: TextInputType.number,
-                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                          decoration: const InputDecoration(
-                            labelText: 'Channel Number',
+                          style: TextStyle(color: colors.textPrimary, fontSize: 14),
+                          decoration: InputDecoration(
+                            labelText: context.tr('Channel Number'),
                             hintText: '1',
                           ),
                           validator: (v) {
@@ -232,9 +237,9 @@ class _AddCameraDialogState extends State<AddCameraDialog> {
                       Expanded(
                         child: DropdownButtonFormField<String>(
                           value: _streamProfile,
-                          dropdownColor: AppColors.surface,
-                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                          decoration: const InputDecoration(labelText: 'Stream Profile'),
+                          dropdownColor: colors.surface,
+                          style: TextStyle(color: colors.textPrimary, fontSize: 14),
+                          decoration: InputDecoration(labelText: context.tr('Stream Profile')),
                           items: const [
                             DropdownMenuItem(value: 'main', child: Text('Main Stream (1080p)')),
                             DropdownMenuItem(value: 'sub', child: Text('Sub Stream (360p / Bandwidth Saver)')),
@@ -251,18 +256,18 @@ class _AddCameraDialogState extends State<AddCameraDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: colors.background,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: colors.border),
                   ),
                   child: Row(
-                    children: const [
-                      Icon(Icons.shield_outlined, color: AppColors.success, size: 18),
-                      SizedBox(width: 10),
+                    children: [
+                      const Icon(Icons.shield_outlined, color: AppColors.success, size: 18),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Zero Credential Leakage: Passwords & AppKeys are stored in the secure Vault and never sent to clients.',
-                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          context.tr('Zero Credential Leakage: Passwords & AppKeys are stored in the secure Vault and never sent to clients.'),
+                          style: TextStyle(fontSize: 11, color: colors.textSecondary),
                         ),
                       ),
                     ],
@@ -276,13 +281,13 @@ class _AddCameraDialogState extends State<AddCameraDialog> {
                   children: [
                     OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+                      child: Text(context.tr('Cancel')),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
                       onPressed: _submit,
                       icon: const Icon(Icons.check, size: 16),
-                      label: const Text('Save & Provision Camera'),
+                      label: Text(context.tr('Save & Provision Camera')),
                     ),
                   ],
                 ),
@@ -314,22 +319,23 @@ class _SourceTypeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.15) : AppColors.background,
+          color: isSelected ? color.withOpacity(0.15) : colors.background,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? color : AppColors.border,
+            color: isSelected ? color : colors.border,
             width: isSelected ? 1.5 : 1,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: isSelected ? color : AppColors.textMuted, size: 22),
+            Icon(icon, color: isSelected ? color : colors.textSecondary, size: 22),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -340,14 +346,14 @@ class _SourceTypeTab extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? Colors.white : AppColors.textPrimary,
+                      color: isSelected ? color : colors.textPrimary,
                     ),
                   ),
                   Text(
                     subtitle,
                     style: TextStyle(
                       fontSize: 11,
-                      color: isSelected ? color : AppColors.textMuted,
+                      color: isSelected ? color : colors.textSecondary,
                     ),
                   ),
                 ],

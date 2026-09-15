@@ -102,6 +102,7 @@ class IncidentModel {
   });
 
   bool get isCritical => severity == IncidentSeverity.critical;
+  bool get isWarning => severity == IncidentSeverity.warning;
   bool get isCashierAlert => ruleType.contains('cashier');
 
   IncidentModel copyWith({

@@ -16,12 +16,13 @@ class ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Center(
       child: Container(
         constraints: const BoxConstraints(maxWidth: 420),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.error.withOpacity(0.3)),
         ),
@@ -37,11 +38,11 @@ class ErrorView extends StatelessWidget {
               child: const Icon(Icons.error_outline, color: AppColors.error, size: 32),
             ),
             const SizedBox(height: 16),
-            Text(title, style: AppTypography.h3, textAlign: TextAlign.center),
+            Text(title, style: AppTypography.h3Of(context), textAlign: TextAlign.center),
             const SizedBox(height: 8),
             Text(
               message,
-              style: AppTypography.bodySecondary,
+              style: AppTypography.bodySecondaryOf(context),
               textAlign: TextAlign.center,
             ),
             if (onRetry != null) ...[

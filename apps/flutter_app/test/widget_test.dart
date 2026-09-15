@@ -688,6 +688,7 @@ void main() {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
+            ChangeNotifierProvider<AppLocaleProvider>.value(value: localeProvider),
             ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
             ChangeNotifierProvider<NotificationProvider>.value(value: notificationProvider),
           ],
@@ -695,10 +696,11 @@ void main() {
             home: Scaffold(
               appBar: PreferredSize(
                 preferredSize: Size.fromHeight(56),
-                child: Row(
-                  children: [
-                    NotificationBellWidget(),
-                  ],
+                child: SafeArea(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: NotificationBellWidget(),
+                  ),
                 ),
               ),
               body: SizedBox(),
@@ -710,7 +712,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(NotificationBellWidget), findsOneWidget);
-      expect(find.byIcon(Icons.notifications_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.notifications_active), findsOneWidget);
       expect(notificationProvider.unreadCount, greaterThan(0));
       expect(find.text('${notificationProvider.unreadCount}'), findsOneWidget);
 

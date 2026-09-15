@@ -14,6 +14,7 @@ class LanguageToggleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localeProvider = context.watch<AppLocaleProvider>();
+    final colors = context.colors;
     final isAr = localeProvider.isArabic;
 
     return Tooltip(
@@ -24,28 +25,28 @@ class LanguageToggleButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: AppColors.surfaceLight.withOpacity(0.5),
+            color: colors.primary.withOpacity(0.12),
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: AppColors.primaryLight.withOpacity(0.35),
+              color: colors.primary.withOpacity(0.35),
               width: 1,
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.language,
                 size: 14,
-                color: AppColors.primaryLight,
+                color: colors.primary,
               ),
               const SizedBox(width: 5),
               Text(
                 isAr ? 'عربي' : 'EN',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: colors.primary,
                   letterSpacing: 0.5,
                 ),
               ),

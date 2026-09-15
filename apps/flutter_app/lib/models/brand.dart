@@ -42,4 +42,26 @@ class BrandModel {
         'camera_count': cameraCount,
         'active_incidents': activeIncidents,
       };
+
+  BrandModel copyWith({
+    String? id,
+    String? companyId,
+    String? companyName,
+    String? name,
+    String? slug,
+    int? branchCount,
+    int? cameraCount,
+    int? activeIncidents,
+  }) {
+    return BrandModel(
+      id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
+      companyName: companyName ?? this.companyName,
+      name: name ?? this.name,
+      slug: slug ?? this.slug,
+      branchCount: branchCount ?? this.branchCount,
+      cameraCount: cameraCount ?? this.cameraCount,
+      activeIncidents: activeIncidents ?? this.activeIncidents,
+    );
+  }
 }

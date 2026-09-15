@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/responsive_util.dart';
+import '../../core/localization/app_locale_provider.dart';
 import '../../models/user_profile.dart';
 import '../../models/camera.dart';
 import '../../models/incident.dart';
@@ -62,6 +63,7 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
     final incidentProvider = context.watch<IncidentProvider>();
     final cameraProvider = context.watch<CameraProvider>();
     final adminProvider = context.watch<AdminProvider>();
+    final colors = context.colors;
 
     if (user == null) {
       return const Center(child: CircularProgressIndicator());
@@ -111,7 +113,7 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. Top Brand Header
-            _buildBrandHeader(user, isMobile),
+            _buildBrandHeader(user, isMobile, colors),
             const SizedBox(height: 24),
 
             // 2. Executive Metrics Row
@@ -122,50 +124,49 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
               activeIncidentsCount: activeIncidents.length,
               uptimePercentage: uptimePercentage,
               isMobile: isMobile,
+              colors: colors,
             ),
             const SizedBox(height: 24),
 
-            // 3. Multi-Filter Bar (Branch, Camera, Severity, Status, Date)
-            _buildFilterCard(brandBranches, brandCameras),
+            // 3. Multi-Filter Bar
+            _buildFilterCard(brandBranches, brandCameras, colors),
             const SizedBox(height: 24),
 
             // 4. Main Body: Incident Feed + Camera Health & Branches
             if (isMobile) ...[
-              _buildActiveIncidentsSection(activeIncidents),
+              _buildActiveIncidentsSection(activeIncidents, colors),
               const SizedBox(height: 24),
-              _buildBranchesSection(brandBranches),
+              _buildBranchesSection(brandBranches, colors),
               const SizedBox(height: 24),
-              _buildCameraHealthSection(brandCameras),
+              _buildCameraHealthSection(brandCameras, colors),
               const SizedBox(height: 24),
-              _buildIncidentHistorySection(resolvedIncidents),
+              _buildIncidentHistorySection(resolvedIncidents, colors),
             ] else ...[
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Left Column: Active Incidents + Resolution History
                   Expanded(
                     flex: 3,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildActiveIncidentsSection(activeIncidents),
+                        _buildActiveIncidentsSection(activeIncidents, colors),
                         const SizedBox(height: 24),
-                        _buildIncidentHistorySection(resolvedIncidents),
+                        _buildIncidentHistorySection(resolvedIncidents, colors),
                         const SizedBox(height: 24),
-                        _buildAiEventsSection(brandIncidents),
+                        _buildAiEventsSection(brandIncidents, colors),
                       ],
                     ),
                   ),
                   const SizedBox(width: 24),
-                  // Right Column: Branches List & Camera Health
                   Expanded(
                     flex: 2,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildBranchesSection(brandBranches),
+                        _buildBranchesSection(brandBranches, colors),
                         const SizedBox(height: 24),
-                        _buildCameraHealthSection(brandCameras),
+                        _buildCameraHealthSection(brandCameras, colors),
                       ],
                     ),
                   ),
@@ -178,13 +179,14 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
     );
   }
 
-  Widget _buildBrandHeader(UserProfile user, bool isMobile) {
+  Widget _buildBrandHeader(UserProfile user, bool isMobile, AppSemanticColors colors) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.cardShadow,
       ),
       child: isMobile
           ? Column(
@@ -196,18 +198,18 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.15),
+                        color: colors.primary.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.storefront, color: AppColors.primary, size: 24),
+                      child: Icon(Icons.storefront, color: colors.primary, size: 24),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(user.brandName ?? 'Brand Dashboard', style: AppTypography.h2),
-                          Text(user.companyName ?? 'Ego Retail Holding', style: AppTypography.caption),
+                          Text(user.brandName ?? 'Brand Operations', style: AppTypography.h2Of(context).copyWith(fontSize: 18)),
+                          Text(user.companyName ?? 'Ego Retail Holding', style: AppTypography.captionOf(context)),
                         ],
                       ),
                     ),
@@ -218,8 +220,8 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _buildPill('ROLE: BRAND MANAGER', AppColors.primary),
-                    _buildPill('SCOPE: ASSIGNED BRAND ONLY', AppColors.secondary),
+                    _buildPill(context.tr('Brand Manager'), colors.primary),
+                    _buildPill(context.tr('Brand Scoped'), colors.secondary),
                   ],
                 ),
               ],
@@ -230,10 +232,10 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.15),
+                    color: colors.primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.storefront, color: AppColors.primary, size: 28),
+                  child: Icon(Icons.storefront, color: colors.primary, size: 28),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -242,25 +244,20 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
                     children: [
                       Row(
                         children: [
-                          Text(user.brandName ?? 'Brand Dashboard', style: AppTypography.h1),
+                          Text(user.brandName ?? 'Brand Operations', style: AppTypography.h2Of(context).copyWith(fontSize: 20)),
                           const SizedBox(width: 12),
-                          _buildPill('BRAND MANAGER', AppColors.primary),
+                          _buildPill(context.tr('Brand Manager'), colors.primary),
                           const SizedBox(width: 8),
-                          _buildPill('RESTRICTED ACCESS', AppColors.secondary),
+                          _buildPill(context.tr('Brand Scoped'), colors.secondary),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Monitoring branches and cameras under ${user.brandName} (${user.companyName ?? "Ego Holding"}). Cross-brand access disabled by RLS.',
-                        style: AppTypography.bodySmall,
+                        'Monitoring branches and cameras under ${user.brandName} (${user.companyName ?? "Holding"}). Multi-tenancy RLS isolation active.',
+                        style: TextStyle(fontSize: 12, color: colors.textSecondary),
                       ),
                     ],
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.refresh, color: AppColors.textSecondary),
-                  tooltip: 'Refresh Data',
-                  onPressed: _loadData,
                 ),
               ],
             ),
@@ -289,35 +286,36 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
     required int activeIncidentsCount,
     required double uptimePercentage,
     required bool isMobile,
+    required AppSemanticColors colors,
   }) {
     final cards = [
       MetricCard(
-        title: 'Brand Branches',
+        title: 'Branches',
         value: '$brandBranchesCount',
         subtitle: 'Assigned brand stores',
         icon: Icons.storefront,
-        color: AppColors.primary,
+        color: colors.primary,
       ),
       MetricCard(
         title: 'Online Cameras',
         value: '$onlineCamerasCount',
-        subtitle: '$offlineCamerasCount offline / warning',
+        subtitle: '$offlineCamerasCount offline',
         icon: Icons.videocam,
-        color: AppColors.success,
+        color: colors.success,
       ),
       MetricCard(
         title: 'Active Incidents',
         value: '$activeIncidentsCount',
         subtitle: activeIncidentsCount > 0 ? 'Requires attention' : 'All quiet',
         icon: Icons.warning_amber_rounded,
-        color: activeIncidentsCount > 0 ? AppColors.error : AppColors.success,
+        color: activeIncidentsCount > 0 ? colors.error : colors.success,
       ),
       MetricCard(
-        title: 'Camera Uptime',
+        title: 'Camera Health',
         value: '${uptimePercentage.toStringAsFixed(1)}%',
         subtitle: 'Brand fleet availability',
         icon: Icons.speed,
-        color: AppColors.secondary,
+        color: colors.secondary,
       ),
     ];
 
@@ -329,36 +327,37 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
 
     return GridView.count(
       crossAxisCount: 4,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      childAspectRatio: 2.1,
+      crossAxisSpacing: 14,
+      mainAxisSpacing: 14,
+      childAspectRatio: 1.6,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: cards,
     );
   }
 
-  Widget _buildFilterCard(List<BranchModel> branches, List<CameraModel> cameras) {
+  Widget _buildFilterCard(List<BranchModel> branches, List<CameraModel> cameras, AppSemanticColors colors) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.filter_list, size: 18, color: AppColors.primary),
+              Icon(Icons.filter_list, size: 18, color: colors.primary),
               const SizedBox(width: 8),
-              const Text('Brand Incident & Camera Filters', style: AppTypography.h3),
+              Text(context.tr('Filter'), style: AppTypography.h3Of(context).copyWith(fontSize: 14)),
               const Spacer(),
               TextButton.icon(
                 onPressed: _resetFilters,
                 icon: const Icon(Icons.clear_all, size: 16),
-                label: const Text('Reset', style: TextStyle(fontSize: 12)),
+                label: Text(context.tr('Clear Filters'), style: const TextStyle(fontSize: 12)),
               ),
             ],
           ),
@@ -370,11 +369,11 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
               // Branch Filter
               DropdownButton<String?>(
                 value: _selectedBranchId,
-                hint: const Text('All Branches', style: TextStyle(fontSize: 13)),
+                hint: Text(context.tr('All Branches'), style: const TextStyle(fontSize: 12)),
                 underline: const SizedBox(),
-                dropdownColor: AppColors.surface,
+                dropdownColor: colors.surfaceElevated,
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('All Branches')),
+                  DropdownMenuItem(value: null, child: Text(context.tr('All Branches'))),
                   ...branches.map((b) => DropdownMenuItem(value: b.id, child: Text(b.name))),
                 ],
                 onChanged: (val) => setState(() => _selectedBranchId = val),
@@ -383,11 +382,11 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
               // Camera Filter
               DropdownButton<String?>(
                 value: _selectedCameraId,
-                hint: const Text('All Cameras', style: TextStyle(fontSize: 13)),
+                hint: Text(context.tr('All Sources'), style: const TextStyle(fontSize: 12)),
                 underline: const SizedBox(),
-                dropdownColor: AppColors.surface,
+                dropdownColor: colors.surfaceElevated,
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('All Cameras')),
+                  DropdownMenuItem(value: null, child: Text(context.tr('All Sources'))),
                   ...cameras.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
                 ],
                 onChanged: (val) => setState(() => _selectedCameraId = val),
@@ -396,14 +395,14 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
               // Severity Filter
               DropdownButton<IncidentSeverity?>(
                 value: _selectedSeverity,
-                hint: const Text('All Severities', style: TextStyle(fontSize: 13)),
+                hint: Text(context.tr('All Severities'), style: const TextStyle(fontSize: 12)),
                 underline: const SizedBox(),
-                dropdownColor: AppColors.surface,
-                items: const [
-                  DropdownMenuItem(value: null, child: Text('All Severities')),
-                  DropdownMenuItem(value: IncidentSeverity.critical, child: Text('Critical')),
-                  DropdownMenuItem(value: IncidentSeverity.warning, child: Text('Warning')),
-                  DropdownMenuItem(value: IncidentSeverity.info, child: Text('Info')),
+                dropdownColor: colors.surfaceElevated,
+                items: [
+                  DropdownMenuItem(value: null, child: Text(context.tr('All Severities'))),
+                  DropdownMenuItem(value: IncidentSeverity.critical, child: Text(context.tr('Critical'))),
+                  DropdownMenuItem(value: IncidentSeverity.warning, child: Text(context.tr('Warning'))),
+                  DropdownMenuItem(value: IncidentSeverity.info, child: Text(context.tr('Info'))),
                 ],
                 onChanged: (val) => setState(() => _selectedSeverity = val),
               ),
@@ -411,14 +410,14 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
               // Status Filter
               DropdownButton<IncidentStatus?>(
                 value: _selectedStatus,
-                hint: const Text('All Statuses', style: TextStyle(fontSize: 13)),
+                hint: Text(context.tr('All Statuses'), style: const TextStyle(fontSize: 12)),
                 underline: const SizedBox(),
-                dropdownColor: AppColors.surface,
-                items: const [
-                  DropdownMenuItem(value: null, child: Text('All Statuses')),
-                  DropdownMenuItem(value: IncidentStatus.open, child: Text('Open / Active')),
-                  DropdownMenuItem(value: IncidentStatus.acknowledged, child: Text('Acknowledged')),
-                  DropdownMenuItem(value: IncidentStatus.resolved, child: Text('Resolved')),
+                dropdownColor: colors.surfaceElevated,
+                items: [
+                  DropdownMenuItem(value: null, child: Text(context.tr('All Statuses'))),
+                  DropdownMenuItem(value: IncidentStatus.open, child: Text(context.tr('Open'))),
+                  DropdownMenuItem(value: IncidentStatus.acknowledged, child: Text(context.tr('Acknowledged'))),
+                  DropdownMenuItem(value: IncidentStatus.resolved, child: Text(context.tr('Resolved'))),
                 ],
                 onChanged: (val) => setState(() => _selectedStatus = val),
               ),
@@ -429,49 +428,55 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
     );
   }
 
-  Widget _buildActiveIncidentsSection(List<IncidentModel> incidents) {
+  Widget _buildActiveIncidentsSection(List<IncidentModel> incidents, AppSemanticColors colors) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.notifications_active, color: AppColors.error, size: 20),
+              Icon(Icons.notifications_active, color: colors.error, size: 20),
               const SizedBox(width: 8),
-              Text('Active Incidents (${incidents.length})', style: AppTypography.h3),
+              Text('${context.tr("Active Incidents")} (${incidents.length})', style: AppTypography.h3Of(context).copyWith(fontSize: 15)),
               const Spacer(),
               if (incidents.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppColors.error.withOpacity(0.15),
+                    color: colors.error.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text('ACTION REQUIRED', style: TextStyle(color: AppColors.error, fontSize: 10, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    context.tr('Critical').toUpperCase(),
+                    style: TextStyle(color: colors.error, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
                 ),
             ],
           ),
-          const Divider(height: 24),
+          Divider(height: 24, color: colors.borderSubtle),
           if (incidents.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: Text('No active incidents reported for this brand.', style: AppTypography.bodySmall)),
+              child: Center(
+                child: Text(context.tr('No incidents found'), style: TextStyle(color: colors.textMuted)),
+              ),
             )
           else
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: incidents.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final inc = incidents[index];
-                return _buildIncidentCard(inc);
+                return _buildIncidentCard(inc, colors);
               },
             ),
         ],
@@ -479,15 +484,20 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
     );
   }
 
-  Widget _buildIncidentCard(IncidentModel inc) {
+  Widget _buildIncidentCard(IncidentModel inc, AppSemanticColors colors) {
     final provider = context.read<IncidentProvider>();
+    final accentBorder = inc.isCritical ? colors.error : (inc.isWarning ? colors.warning : colors.info);
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: colors.surfaceSubtle,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: inc.isCritical ? AppColors.error.withOpacity(0.4) : AppColors.border,
+        border: BorderDirectional(
+          start: BorderSide(color: accentBorder, width: 4),
+          top: BorderSide(color: colors.borderSubtle),
+          bottom: BorderSide(color: colors.borderSubtle),
+          end: BorderSide(color: colors.borderSubtle),
         ),
       ),
       child: Column(
@@ -498,26 +508,29 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
               SeverityBadge(severity: inc.severity),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(inc.title, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+                child: Text(
+                  context.tr(inc.title),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: colors.textPrimary),
+                ),
               ),
               Text(
                 '${inc.timestamp.hour.toString().padLeft(2, '0')}:${inc.timestamp.minute.toString().padLeft(2, '0')}',
-                style: AppTypography.caption,
+                style: TextStyle(fontSize: 11, color: colors.textMuted),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(inc.description, style: AppTypography.bodySmall),
+          Text(inc.description, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
           const SizedBox(height: 10),
           Row(
             children: [
-              Icon(Icons.storefront, size: 14, color: AppColors.textSecondary),
+              Icon(Icons.storefront, size: 14, color: colors.textSecondary),
               const SizedBox(width: 4),
-              Text(inc.branchName, style: AppTypography.caption),
+              Text(inc.branchName, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
               const SizedBox(width: 12),
-              Icon(Icons.videocam, size: 14, color: AppColors.textSecondary),
+              Icon(Icons.videocam, size: 14, color: colors.textSecondary),
               const SizedBox(width: 4),
-              Text(inc.cameraName, style: AppTypography.caption),
+              Text(inc.cameraName, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
               const Spacer(),
               if (inc.status == IncidentStatus.open) ...[
                 OutlinedButton(
@@ -525,18 +538,20 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     minimumSize: const Size(60, 28),
+                    side: BorderSide(color: colors.border),
                   ),
-                  child: const Text('Acknowledge', style: TextStyle(fontSize: 11)),
+                  child: Text(context.tr('Acknowledge'), style: const TextStyle(fontSize: 11)),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed: () => _showResolveDialog(inc),
+                  onPressed: () => _showResolveDialog(inc, colors),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: colors.primary,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     minimumSize: const Size(60, 28),
                   ),
-                  child: const Text('Resolve', style: TextStyle(fontSize: 11, color: Colors.white)),
+                  child: Text(context.tr('Resolve'), style: const TextStyle(fontSize: 11)),
                 ),
               ],
             ],
@@ -546,65 +561,78 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
     );
   }
 
-  void _showResolveDialog(IncidentModel incident) {
+  void _showResolveDialog(IncidentModel incident, AppSemanticColors colors) {
     final noteController = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Resolve Incident: ${incident.title}'),
+        backgroundColor: colors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text('${context.tr("Resolve")}: ${incident.title}', style: AppTypography.h3Of(context)),
         content: TextField(
           controller: noteController,
-          decoration: const InputDecoration(
-            labelText: 'Resolution Note',
+          style: TextStyle(color: colors.textPrimary),
+          decoration: InputDecoration(
+            labelText: context.tr('Security Notes'),
             hintText: 'e.g. Cashier returned to station; queue cleared.',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(context.tr('Cancel'), style: TextStyle(color: colors.textSecondary)),
+          ),
           ElevatedButton(
             onPressed: () {
               context.read<IncidentProvider>().resolveIncident(incident.id, noteController.text);
               Navigator.pop(ctx);
             },
-            child: const Text('Confirm Resolution'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(context.tr('Confirm')),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBranchesSection(List<BranchModel> branches) {
+  Widget _buildBranchesSection(List<BranchModel> branches, AppSemanticColors colors) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.storefront, color: AppColors.primary, size: 20),
+              Icon(Icons.storefront, color: colors.primary, size: 20),
               const SizedBox(width: 8),
-              Text('Brand Branches (${branches.length})', style: AppTypography.h3),
+              Text('${context.tr("Branches")} (${branches.length})', style: AppTypography.h3Of(context).copyWith(fontSize: 15)),
             ],
           ),
-          const Divider(height: 24),
+          Divider(height: 24, color: colors.borderSubtle),
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: branches.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final b = branches[index];
+              final isOp = b.isOperational;
               return Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.background,
+                  color: colors.surfaceSubtle,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: colors.borderSubtle),
                 ),
                 child: Row(
                   children: [
@@ -612,23 +640,24 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(b.name, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+                          Text(b.name, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: colors.textPrimary)),
                           const SizedBox(height: 4),
-                          Text('${b.code} • ${b.address}', style: AppTypography.caption),
+                          Text('${b.code} • ${b.address}', style: TextStyle(fontSize: 11, color: colors.textMuted)),
                         ],
                       ),
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text('${b.onlineCameraCount}/${b.cameraCount} Online', style: AppTypography.caption),
+                        Text(
+                          '${b.onlineCameraCount}/${b.cameraCount} ${context.tr("Online")}',
+                          style: TextStyle(fontSize: 11, color: colors.textMuted),
+                        ),
                         const SizedBox(height: 4),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: b.isOperational
-                                ? AppColors.success.withOpacity(0.15)
-                                : AppColors.error.withOpacity(0.15),
+                            color: isOp ? colors.success.withOpacity(0.12) : colors.error.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -636,7 +665,7 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: b.isOperational ? AppColors.success : AppColors.error,
+                              color: isOp ? colors.success : colors.error,
                             ),
                           ),
                         ),
@@ -652,25 +681,26 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
     );
   }
 
-  Widget _buildCameraHealthSection(List<CameraModel> cameras) {
+  Widget _buildCameraHealthSection(List<CameraModel> cameras, AppSemanticColors colors) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.videocam, color: AppColors.secondary, size: 20),
+              Icon(Icons.videocam, color: colors.secondary, size: 20),
               const SizedBox(width: 8),
-              Text('Camera Health (${cameras.length})', style: AppTypography.h3),
+              Text('${context.tr("Camera Health")} (${cameras.length})', style: AppTypography.h3Of(context).copyWith(fontSize: 15)),
             ],
           ),
-          const Divider(height: 24),
+          Divider(height: 24, color: colors.borderSubtle),
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -681,8 +711,9 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
               return Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.background,
+                  color: colors.surfaceSubtle,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: colors.borderSubtle),
                 ),
                 child: Row(
                   children: [
@@ -692,12 +723,18 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(cam.name, style: AppTypography.bodyMedium),
-                          Text('${cam.branchName} • ${cam.sourceTypeDisplayName}', style: AppTypography.caption),
+                          Text(cam.name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: colors.textPrimary)),
+                          Text(
+                            '${cam.branchName} • ${cam.sourceTypeDisplayName}',
+                            style: TextStyle(fontSize: 10, color: colors.textMuted),
+                          ),
                         ],
                       ),
                     ),
-                    Text(cam.isOnline ? '${cam.fps} FPS' : 'OFFLINE', style: AppTypography.caption),
+                    Text(
+                      cam.isOnline ? '${cam.fps} FPS' : context.tr('Offline').toUpperCase(),
+                      style: TextStyle(fontSize: 10, color: colors.textMuted),
+                    ),
                   ],
                 ),
               );
@@ -708,29 +745,32 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
     );
   }
 
-  Widget _buildIncidentHistorySection(List<IncidentModel> resolved) {
+  Widget _buildIncidentHistorySection(List<IncidentModel> resolved, AppSemanticColors colors) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.history, color: AppColors.success, size: 20),
+              Icon(Icons.history, color: colors.success, size: 20),
               const SizedBox(width: 8),
-              Text('Incident History & Resolutions (${resolved.length})', style: AppTypography.h3),
+              Text('${context.tr("Resolved Incidents")} (${resolved.length})', style: AppTypography.h3Of(context).copyWith(fontSize: 15)),
             ],
           ),
-          const Divider(height: 24),
+          Divider(height: 24, color: colors.borderSubtle),
           if (resolved.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: Text('No resolved incidents in current filter scope.', style: AppTypography.bodySmall)),
+              child: Center(
+                child: Text(context.tr('No data found'), style: TextStyle(color: colors.textMuted)),
+              ),
             )
           else
             ListView.separated(
@@ -743,23 +783,32 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
                 return Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: colors.surfaceSubtle,
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colors.borderSubtle),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.check_circle, size: 16, color: AppColors.success),
+                          Icon(Icons.check_circle, size: 16, color: colors.success),
                           const SizedBox(width: 8),
-                          Expanded(child: Text(inc.title, style: AppTypography.bodyMedium)),
-                          Text(inc.status.name.toUpperCase(), style: const TextStyle(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.bold)),
+                          Expanded(
+                            child: Text(
+                              context.tr(inc.title),
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: colors.textPrimary),
+                            ),
+                          ),
+                          Text(
+                            context.tr(inc.status.name).toUpperCase(),
+                            style: TextStyle(color: colors.success, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                       if (inc.resolutionNote != null && inc.resolutionNote!.isNotEmpty) ...[
                         const SizedBox(height: 4),
-                        Text('Note: ${inc.resolutionNote}', style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
+                        Text('Note: ${inc.resolutionNote}', style: TextStyle(fontSize: 11, color: colors.textSecondary)),
                       ],
                     ],
                   ),
@@ -771,25 +820,26 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
     );
   }
 
-  Widget _buildAiEventsSection(List<IncidentModel> incidents) {
+  Widget _buildAiEventsSection(List<IncidentModel> incidents, AppSemanticColors colors) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.smart_toy_outlined, color: AppColors.secondary, size: 20),
+              Icon(Icons.smart_toy_outlined, color: colors.secondary, size: 20),
               const SizedBox(width: 8),
-              const Text('AI Vision Events Log', style: AppTypography.h3),
+              Text(context.tr('AI Detection Rules'), style: AppTypography.h3Of(context).copyWith(fontSize: 15)),
             ],
           ),
-          const Divider(height: 24),
+          Divider(height: 24, color: colors.borderSubtle),
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -800,8 +850,9 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
               return Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.background,
+                  color: colors.surfaceSubtle,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: colors.borderSubtle),
                 ),
                 child: Row(
                   children: [
@@ -809,7 +860,7 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: inc.isCritical ? AppColors.error : AppColors.primary,
+                        color: inc.isCritical ? colors.error : colors.primary,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -818,12 +869,21 @@ class _BrandManagerDashboardState extends State<BrandManagerDashboard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('AI Trigger: ${inc.ruleType} (${inc.cameraName})', style: AppTypography.bodySmall),
-                          Text('Confidence: ${((inc.confidence ?? 0.95) * 100).toStringAsFixed(0)}% • Duration: ${inc.durationSeconds ?? 0}s', style: AppTypography.caption),
+                          Text(
+                            'AI Trigger: ${inc.ruleType} (${inc.cameraName})',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: colors.textPrimary),
+                          ),
+                          Text(
+                            'Confidence: ${((inc.confidence ?? 0.95) * 100).toStringAsFixed(0)}% • Duration: ${inc.durationSeconds ?? 0}s',
+                            style: TextStyle(fontSize: 10, color: colors.textMuted),
+                          ),
                         ],
                       ),
                     ),
-                    Text('${inc.timestamp.hour}:${inc.timestamp.minute.toString().padLeft(2, '0')}', style: AppTypography.caption),
+                    Text(
+                      '${inc.timestamp.hour}:${inc.timestamp.minute.toString().padLeft(2, '0')}',
+                      style: TextStyle(fontSize: 10, color: colors.textMuted),
+                    ),
                   ],
                 ),
               );

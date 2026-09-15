@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/localization/app_locale_provider.dart';
 import '../../models/incident.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/incident_provider.dart';
+import '../../providers/admin_provider.dart';
 import '../../widgets/responsive_scaffold.dart';
 import '../../widgets/severity_badge.dart';
 import '../../widgets/empty_state_view.dart';
@@ -26,6 +28,7 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
       final user = context.read<AuthProvider>().currentUser;
       if (user != null) {
         context.read<IncidentProvider>().loadData(user);
+        context.read<AdminProvider>().loadAllAdminData(user);
       }
     });
   }
@@ -40,8 +43,10 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
   @override
   Widget build(BuildContext context) {
     final incidentProv = context.watch<IncidentProvider>();
+    final adminProv = context.watch<AdminProvider>();
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser;
+    final colors = context.colors;
 
     if (user == null) return const Scaffold(body: LoadingView());
 
@@ -49,11 +54,11 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
 
     return ResponsiveScaffold(
       currentRoute: '/incidents',
-      title: 'AI Vision Incidents & Alarms',
+      title: 'Incidents',
       actions: [
         IconButton(
           icon: const Icon(Icons.refresh, size: 20),
-          tooltip: 'Refresh Incidents',
+          tooltip: context.tr('Refresh Realtime Data'),
           onPressed: () => incidentProv.loadData(user),
         ),
       ],
@@ -63,164 +68,175 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Filter Bar
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    // Search and Brand / Branch dropdowns
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: TextField(
-                            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                            decoration: InputDecoration(
-                              prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.textMuted),
-                              hintText: 'Search by title, camera, branch, or description...',
-                              contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                              suffixIcon: incidentProv.searchQuery.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear, size: 16),
-                                      onPressed: () => incidentProv.setSearchQuery(''),
-                                    )
-                                  : null,
+            Container(
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+                boxShadow: colors.cardShadow,
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Search and Brand / Branch dropdowns
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: TextField(
+                          style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                          decoration: InputDecoration(
+                            prefixIcon: Icon(Icons.search, size: 18, color: colors.textMuted),
+                            hintText: context.tr('Search incidents...'),
+                            hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                            border: InputBorder.none,
+                            isDense: true,
+                            suffixIcon: incidentProv.searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(Icons.clear, size: 16, color: colors.textMuted),
+                                    onPressed: () => incidentProv.setSearchQuery(''),
+                                  )
+                                : null,
+                          ),
+                          onChanged: (v) => incidentProv.setSearchQuery(v),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      if (user.isSuperAdmin) ...[
+                        DropdownButton<String?>(
+                          value: incidentProv.filterBrand,
+                          underline: const SizedBox.shrink(),
+                          dropdownColor: colors.surfaceElevated,
+                          style: TextStyle(fontSize: 12, color: colors.textPrimary),
+                          hint: Text(context.tr('All Brands'), style: TextStyle(color: colors.textMuted, fontSize: 12)),
+                          items: [
+                            DropdownMenuItem(value: null, child: Text(context.tr('All Brands'))),
+                            ...adminProv.brands.map(
+                              (b) => DropdownMenuItem(value: b.name, child: Text(b.name)),
                             ),
-                            onChanged: (v) => incidentProv.setSearchQuery(v),
+                          ],
+                          onChanged: (val) => incidentProv.setFilterBrand(val),
+                        ),
+                        const SizedBox(width: 12),
+                      ] else if (user.isBrandManager) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: colors.primary.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            user.brandName ?? 'Brand',
+                            style: TextStyle(color: colors.primary, fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                         ),
                         const SizedBox(width: 12),
-                        if (user.isSuperAdmin) ...[
-                          DropdownButton<String?>(
-                            value: incidentProv.filterBrand,
-                            underline: const SizedBox.shrink(),
-                            dropdownColor: AppColors.surface,
-                            style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-                            hint: const Text('All Brands', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                            items: const [
-                              DropdownMenuItem(value: null, child: Text('All Brands')),
-                              DropdownMenuItem(value: 'Ego', child: Text('Ego Fashion')),
-                              DropdownMenuItem(value: 'Armani', child: Text('Armani Exchange')),
-                            ],
-                            onChanged: (val) => incidentProv.setFilterBrand(val),
-                          ),
-                          const SizedBox(width: 12),
-                        ] else if (user.isBrandManager) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(user.brandName ?? 'Brand', style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                        if (!user.isBranchSecurity)
-                          DropdownButton<String?>(
-                            value: incidentProv.filterBranch,
-                            underline: const SizedBox.shrink(),
-                            dropdownColor: AppColors.surface,
-                            style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-                            hint: const Text('All Branches', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                            items: user.isBrandManager
-                                ? const [
-                                    DropdownMenuItem(value: null, child: Text('All Brand Branches')),
-                                    DropdownMenuItem(value: 'Mall of Arabia', child: Text('Mall of Arabia')),
-                                    DropdownMenuItem(value: 'Cairo Festival', child: Text('Cairo Festival City')),
-                                  ]
-                                : const [
-                                    DropdownMenuItem(value: null, child: Text('All Branches')),
-                                    DropdownMenuItem(value: 'Mall of Arabia', child: Text('Mall of Arabia')),
-                                    DropdownMenuItem(value: 'Cairo Festival', child: Text('Cairo Festival City')),
-                                    DropdownMenuItem(value: 'City Stars', child: Text('City Stars')),
-                                  ],
-                            onChanged: (val) => incidentProv.setFilterBranch(val),
-                          )
-                        else
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppColors.warning.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(user.branchName ?? 'Assigned Branch', style: const TextStyle(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.bold)),
-                          ),
                       ],
-                    ),
-                    const Divider(height: 20),
+                      if (!user.isBranchSecurity)
+                        DropdownButton<String?>(
+                          value: incidentProv.filterBranch,
+                          underline: const SizedBox.shrink(),
+                          dropdownColor: colors.surfaceElevated,
+                          style: TextStyle(fontSize: 12, color: colors.textPrimary),
+                          hint: Text(context.tr('All Branches'), style: TextStyle(color: colors.textMuted, fontSize: 12)),
+                          items: [
+                            DropdownMenuItem(value: null, child: Text(context.tr('All Branches'))),
+                            ...adminProv.branches.map(
+                              (br) => DropdownMenuItem(value: br.name, child: Text(br.name)),
+                            ),
+                          ],
+                          onChanged: (val) => incidentProv.setFilterBranch(val),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: colors.warning.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            user.branchName ?? 'Assigned Branch',
+                            style: TextStyle(color: colors.warning, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                    ],
+                  ),
+                  Divider(height: 20, color: colors.borderSubtle),
 
-                    // Severity & Status Chips
-                    Row(
-                      children: [
-                        const Text('Severity:', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                        const SizedBox(width: 8),
-                        _ChipButton(
-                          label: 'All',
-                          isSelected: incidentProv.filterSeverity == null,
-                          onTap: () => incidentProv.setFilterSeverity(null),
-                        ),
-                        const SizedBox(width: 6),
-                        _ChipButton(
-                          label: 'Critical',
-                          isSelected: incidentProv.filterSeverity == IncidentSeverity.critical,
-                          color: AppColors.severityCritical,
-                          onTap: () => incidentProv.setFilterSeverity(IncidentSeverity.critical),
-                        ),
-                        const SizedBox(width: 6),
-                        _ChipButton(
-                          label: 'Warning',
-                          isSelected: incidentProv.filterSeverity == IncidentSeverity.warning,
-                          color: AppColors.severityWarning,
-                          onTap: () => incidentProv.setFilterSeverity(IncidentSeverity.warning),
-                        ),
-                        const SizedBox(width: 6),
-                        _ChipButton(
-                          label: 'Info',
-                          isSelected: incidentProv.filterSeverity == IncidentSeverity.info,
-                          color: AppColors.severityInfo,
-                          onTap: () => incidentProv.setFilterSeverity(IncidentSeverity.info),
-                        ),
-                        const SizedBox(width: 20),
-                        const Text('Status:', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                        const SizedBox(width: 8),
-                        _ChipButton(
-                          label: 'All',
-                          isSelected: incidentProv.filterStatus == null,
-                          onTap: () => incidentProv.setFilterStatus(null),
-                        ),
-                        const SizedBox(width: 6),
-                        _ChipButton(
-                          label: 'Open',
-                          isSelected: incidentProv.filterStatus == IncidentStatus.open,
-                          color: AppColors.error,
-                          onTap: () => incidentProv.setFilterStatus(IncidentStatus.open),
-                        ),
-                        const SizedBox(width: 6),
-                        _ChipButton(
-                          label: 'Acknowledged',
-                          isSelected: incidentProv.filterStatus == IncidentStatus.acknowledged,
-                          color: AppColors.warning,
-                          onTap: () => incidentProv.setFilterStatus(IncidentStatus.acknowledged),
-                        ),
-                        const SizedBox(width: 6),
-                        _ChipButton(
-                          label: 'Resolved',
-                          isSelected: incidentProv.filterStatus == IncidentStatus.resolved,
-                          color: AppColors.success,
-                          onTap: () => incidentProv.setFilterStatus(IncidentStatus.resolved),
-                        ),
-                        const SizedBox(width: 6),
-                        _ChipButton(
-                          label: 'False Pos',
-                          isSelected: incidentProv.filterStatus == IncidentStatus.falsePositive,
-                          color: AppColors.textMuted,
-                          onTap: () => incidentProv.setFilterStatus(IncidentStatus.falsePositive),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                  // Severity & Status Chips
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text('${context.tr("Filter by Severity")}:', style: TextStyle(fontSize: 11, color: colors.textMuted)),
+                      _ChipButton(
+                        label: context.tr('All Severities'),
+                        isSelected: incidentProv.filterSeverity == null,
+                        colors: colors,
+                        onTap: () => incidentProv.setFilterSeverity(null),
+                      ),
+                      _ChipButton(
+                        label: context.tr('Critical'),
+                        isSelected: incidentProv.filterSeverity == IncidentSeverity.critical,
+                        color: colors.severityCritical,
+                        colors: colors,
+                        onTap: () => incidentProv.setFilterSeverity(IncidentSeverity.critical),
+                      ),
+                      _ChipButton(
+                        label: context.tr('Warning'),
+                        isSelected: incidentProv.filterSeverity == IncidentSeverity.warning,
+                        color: colors.severityWarning,
+                        colors: colors,
+                        onTap: () => incidentProv.setFilterSeverity(IncidentSeverity.warning),
+                      ),
+                      _ChipButton(
+                        label: context.tr('Info'),
+                        isSelected: incidentProv.filterSeverity == IncidentSeverity.info,
+                        color: colors.severityInfo,
+                        colors: colors,
+                        onTap: () => incidentProv.setFilterSeverity(IncidentSeverity.info),
+                      ),
+                      const SizedBox(width: 14),
+                      Text('${context.tr("Filter by Status")}:', style: TextStyle(fontSize: 11, color: colors.textMuted)),
+                      _ChipButton(
+                        label: context.tr('All Statuses'),
+                        isSelected: incidentProv.filterStatus == null,
+                        colors: colors,
+                        onTap: () => incidentProv.setFilterStatus(null),
+                      ),
+                      _ChipButton(
+                        label: context.tr('Open'),
+                        isSelected: incidentProv.filterStatus == IncidentStatus.open,
+                        color: colors.error,
+                        colors: colors,
+                        onTap: () => incidentProv.setFilterStatus(IncidentStatus.open),
+                      ),
+                      _ChipButton(
+                        label: context.tr('Acknowledged'),
+                        isSelected: incidentProv.filterStatus == IncidentStatus.acknowledged,
+                        color: colors.warning,
+                        colors: colors,
+                        onTap: () => incidentProv.setFilterStatus(IncidentStatus.acknowledged),
+                      ),
+                      _ChipButton(
+                        label: context.tr('Resolved'),
+                        isSelected: incidentProv.filterStatus == IncidentStatus.resolved,
+                        color: colors.success,
+                        colors: colors,
+                        onTap: () => incidentProv.setFilterStatus(IncidentStatus.resolved),
+                      ),
+                      _ChipButton(
+                        label: context.tr('False Positive'),
+                        isSelected: incidentProv.filterStatus == IncidentStatus.falsePositive,
+                        color: colors.textMuted,
+                        colors: colors,
+                        onTap: () => incidentProv.setFilterStatus(IncidentStatus.falsePositive),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 20),
@@ -228,12 +244,12 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
             // Incident List
             Expanded(
               child: incidentProv.isLoading
-                  ? const LoadingView(message: 'Loading AI incident detections...')
+                  ? LoadingView(message: context.tr('Loading...'))
                   : filteredIncidents.isEmpty
-                      ? const EmptyStateView(
+                      ? EmptyStateView(
                           icon: Icons.notifications_off_outlined,
-                          title: 'No Incidents Found',
-                          description: 'No AI security incidents match your selected filters.',
+                          title: context.tr('No incidents found'),
+                          description: context.tr('No incidents found'),
                         )
                       : ListView.separated(
                           itemCount: filteredIncidents.length,
@@ -242,6 +258,7 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
                             final inc = filteredIncidents[index];
                             return _IncidentCard(
                               incident: inc,
+                              colors: colors,
                               onOpen: () => _openIncidentDetails(context, inc),
                               onAcknowledge: () => incidentProv.acknowledgeIncident(inc.id),
                               onResolve: () => incidentProv.resolveIncident(inc.id, 'Verified by operator'),
@@ -261,28 +278,30 @@ class _ChipButton extends StatelessWidget {
   final String label;
   final bool isSelected;
   final Color? color;
+  final AppSemanticColors colors;
   final VoidCallback onTap;
 
   const _ChipButton({
     required this.label,
     required this.isSelected,
     this.color,
+    required this.colors,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppColors.primary;
+    final c = color ?? colors.primary;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(5),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? c.withOpacity(0.2) : AppColors.surface,
-          borderRadius: BorderRadius.circular(4),
+          color: isSelected ? c.withOpacity(0.15) : colors.surfaceSubtle,
+          borderRadius: BorderRadius.circular(5),
           border: Border.all(
-            color: isSelected ? c : AppColors.border,
+            color: isSelected ? c : colors.borderSubtle,
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -291,7 +310,7 @@ class _ChipButton extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            color: isSelected ? Colors.white : AppColors.textSecondary,
+            color: isSelected ? c : colors.textSecondary,
           ),
         ),
       ),
@@ -301,6 +320,7 @@ class _ChipButton extends StatelessWidget {
 
 class _IncidentCard extends StatelessWidget {
   final IncidentModel incident;
+  final AppSemanticColors colors;
   final VoidCallback onOpen;
   final VoidCallback onAcknowledge;
   final VoidCallback onResolve;
@@ -308,6 +328,7 @@ class _IncidentCard extends StatelessWidget {
 
   const _IncidentCard({
     required this.incident,
+    required this.colors,
     required this.onOpen,
     required this.onAcknowledge,
     required this.onResolve,
@@ -321,146 +342,182 @@ class _IncidentCard extends StatelessWidget {
     Color statusBadgeColor;
     switch (incident.status) {
       case IncidentStatus.open:
-        statusBadgeColor = AppColors.error;
+        statusBadgeColor = colors.error;
         break;
       case IncidentStatus.acknowledged:
-        statusBadgeColor = AppColors.warning;
+        statusBadgeColor = colors.warning;
         break;
       case IncidentStatus.resolved:
-        statusBadgeColor = AppColors.success;
+        statusBadgeColor = colors.success;
         break;
       case IncidentStatus.falsePositive:
-        statusBadgeColor = AppColors.textMuted;
+        statusBadgeColor = colors.textMuted;
         break;
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                SeverityBadge(severity: incident.severity),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    incident.title,
-                    style: AppTypography.h3,
-                    overflow: TextOverflow.ellipsis,
+    final accentBorder = incident.isCritical ? colors.error : (incident.isWarning ? colors.warning : colors.info);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: BorderDirectional(
+          start: BorderSide(color: accentBorder, width: 4),
+          top: BorderSide(color: colors.border),
+          bottom: BorderSide(color: colors.border),
+          end: BorderSide(color: colors.border),
+        ),
+        boxShadow: colors.cardShadow,
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SeverityBadge(severity: incident.severity),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  context.tr(incident.title),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusBadgeColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  context.tr(incident.status.displayName).toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: statusBadgeColor,
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusBadgeColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    incident.status.displayName.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: statusBadgeColor,
+              ),
+              const SizedBox(width: 12),
+              Text(timeStr, style: TextStyle(fontSize: 11, color: colors.textMuted)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(incident.description, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.spaceBetween,
+            children: [
+              // Metadata chips
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceSubtle,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: colors.borderSubtle),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.store, size: 14, color: colors.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${incident.brandName ?? "Ego Fashion"} • ${incident.branchName}',
+                          style: TextStyle(fontSize: 11, color: colors.textSecondary),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Text(timeStr, style: AppTypography.caption),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(incident.description, style: AppTypography.body),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                // Brand & Branch Location
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.store, size: 14, color: AppColors.primary),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${incident.brandName ?? "Ego Fashion"} • ${incident.branchName}',
-                        style: AppTypography.caption.copyWith(fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.videocam_outlined, size: 14, color: AppColors.textMuted),
-                      const SizedBox(width: 6),
-                      Text(incident.cameraName, style: AppTypography.caption.copyWith(fontSize: 11)),
-                    ],
-                  ),
-                ),
-                if (incident.durationSeconds != null) ...[
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.warning.withOpacity(0.12),
+                      color: colors.surfaceSubtle,
                       borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: colors.borderSubtle),
                     ),
-                    child: Text(
-                      'Elapsed: ${incident.durationSeconds}s',
-                      style: const TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.bold),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.videocam_outlined, size: 14, color: colors.textMuted),
+                        const SizedBox(width: 6),
+                        Text(incident.cameraName, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
+                      ],
                     ),
                   ),
+                  if (incident.durationSeconds != null) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: colors.warning.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${incident.durationSeconds}s',
+                        style: TextStyle(fontSize: 11, color: colors.warning, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ],
-                const Spacer(),
+              ),
 
-                // Action Buttons for Super Admin
-                OutlinedButton(
-                  onPressed: onOpen,
-                  child: const Text('Open Details'),
-                ),
-                if (incident.status == IncidentStatus.open) ...[
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: onAcknowledge,
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.warning),
-                    child: const Text('Acknowledge'),
+              // Action Buttons
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton(
+                    onPressed: onOpen,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      side: BorderSide(color: colors.border),
+                    ),
+                    child: Text(context.tr('Incident Details'), style: TextStyle(fontSize: 12, color: colors.textPrimary)),
                   ),
+                  if (incident.status == IncidentStatus.open) ...[
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: onAcknowledge,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.warning,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      child: Text(context.tr('Acknowledge'), style: const TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                  if (incident.status == IncidentStatus.acknowledged || incident.status == IncidentStatus.open) ...[
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: onResolve,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.success,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      child: Text(context.tr('Resolve'), style: const TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                  if (incident.status != IncidentStatus.falsePositive) ...[
+                    const SizedBox(width: 6),
+                    IconButton(
+                      icon: Icon(Icons.flag_outlined, size: 18, color: colors.textMuted),
+                      tooltip: context.tr('Mark as False Positive'),
+                      onPressed: onFalsePositive,
+                    ),
+                  ],
                 ],
-                if (incident.status == IncidentStatus.acknowledged || incident.status == IncidentStatus.open) ...[
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: onResolve,
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-                    child: const Text('Resolve'),
-                  ),
-                ],
-                if (incident.status != IncidentStatus.falsePositive) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.flag_outlined, size: 18, color: AppColors.textMuted),
-                    tooltip: 'Mark False Positive',
-                    onPressed: onFalsePositive,
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -473,9 +530,14 @@ class _IncidentDetailsModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Dialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      backgroundColor: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: colors.border),
+      ),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 680),
         padding: const EdgeInsets.all(24),
@@ -490,24 +552,27 @@ class _IncidentDetailsModal extends StatelessWidget {
                   children: [
                     SeverityBadge(severity: incident.severity),
                     const SizedBox(width: 12),
-                    Text(incident.title, style: AppTypography.h2),
+                    Text(
+                      context.tr(incident.title),
+                      style: AppTypography.h2Of(context).copyWith(fontSize: 18),
+                    ),
                   ],
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, size: 20, color: AppColors.textMuted),
+                  icon: Icon(Icons.close, size: 20, color: colors.textMuted),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
             ),
-            const Divider(height: 24),
+            Divider(height: 24, color: colors.borderSubtle),
 
-            // Camera Snapshot / HUD Placeholder
+            // Camera Snapshot / HUD Viewport
             Container(
               height: 220,
               decoration: BoxDecoration(
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: colors.border),
               ),
               child: Stack(
                 children: [
@@ -518,59 +583,77 @@ class _IncidentDetailsModal extends StatelessWidget {
                         const Icon(Icons.videocam, size: 48, color: Colors.white24),
                         const SizedBox(height: 8),
                         Text(
-                          'EVENT SNAPSHOT: ${incident.cameraName.toUpperCase()}',
-                          style: AppTypography.code.copyWith(fontSize: 12, color: Colors.white70),
-                        ),
-                        Text(
-                          'Confidence Score: ${((incident.confidence ?? 0.94) * 100).toStringAsFixed(1)}%',
-                          style: const TextStyle(fontSize: 11, color: AppColors.success),
+                          '${incident.cameraName} • SNAPSHOT RECORDING',
+                          style: const TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                   ),
                   Positioned(
-                    top: 10,
+                    top: 12,
                     left: 12,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.8),
+                        color: colors.error.withOpacity(0.85),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        'RULE: ${incident.ruleType.toUpperCase()}',
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                        context.tr(incident.severity.displayName).toUpperCase(),
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
 
-            Text(incident.description, style: AppTypography.body),
-            const SizedBox(height: 16),
-
-            _DetailRow(label: 'Retail Brand', value: incident.brandName ?? 'Ego Fashion'),
-            _DetailRow(label: 'Assigned Branch', value: incident.branchName),
-            _DetailRow(label: 'Source Camera', value: incident.cameraName),
-            _DetailRow(label: 'Elapsed Duration', value: '${incident.durationSeconds ?? 0} seconds'),
-            _DetailRow(
-              label: 'Detection Timestamp',
-              value: DateFormat('yyyy-MM-dd HH:mm:ss').format(incident.timestamp),
+            Text(
+              incident.description,
+              style: TextStyle(fontSize: 13, color: colors.textPrimary),
             ),
-            if (incident.resolutionNote != null)
-              _DetailRow(label: 'Resolution Note', value: incident.resolutionNote!),
+            const SizedBox(height: 14),
 
+            // Details Grid
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.surfaceSubtle,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: colors.borderSubtle),
+              ),
+              child: Column(
+                children: [
+                  _ModalRow(label: context.tr('Branch'), value: incident.branchName, colors: colors),
+                  _ModalRow(label: context.tr('Camera'), value: incident.cameraName, colors: colors),
+                  _ModalRow(
+                    label: context.tr('Timestamp'),
+                    value: DateFormat('yyyy-MM-dd HH:mm:ss').format(incident.timestamp),
+                    colors: colors,
+                  ),
+                  _ModalRow(label: context.tr('Status'), value: context.tr(incident.status.displayName), colors: colors),
+                  if (incident.durationSeconds != null)
+                    _ModalRow(
+                      label: context.tr('Cooldown (Seconds)'),
+                      value: '${incident.durationSeconds}s',
+                      colors: colors,
+                    ),
+                ],
+              ),
+            ),
             const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Close'),
+
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  foregroundColor: Colors.white,
                 ),
-              ],
+                child: Text(context.tr('Close')),
+              ),
             ),
           ],
         ),
@@ -579,11 +662,12 @@ class _IncidentDetailsModal extends StatelessWidget {
   }
 }
 
-class _DetailRow extends StatelessWidget {
+class _ModalRow extends StatelessWidget {
   final String label;
   final String value;
+  final AppSemanticColors colors;
 
-  const _DetailRow({required this.label, required this.value});
+  const _ModalRow({required this.label, required this.value, required this.colors});
 
   @override
   Widget build(BuildContext context) {
@@ -592,8 +676,8 @@ class _DetailRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTypography.caption),
-          Text(value, style: AppTypography.bodyMedium),
+          Text(label, style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.textPrimary)),
         ],
       ),
     );

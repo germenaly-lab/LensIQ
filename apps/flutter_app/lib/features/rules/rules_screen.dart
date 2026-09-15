@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/localization/app_locale_provider.dart';
 import '../../models/ai_rule.dart';
 import '../../models/incident.dart';
 import '../../providers/admin_provider.dart';
@@ -22,17 +23,24 @@ class RulesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final adminProv = context.watch<AdminProvider>();
     final rules = adminProv.rules;
 
     return ResponsiveScaffold(
       currentRoute: '/rules',
-      title: 'AI Detection Rules',
+      title: 'AI Rules',
       actions: [
         ElevatedButton.icon(
           onPressed: () => _openRuleFormDialog(context),
           icon: const Icon(Icons.add, size: 16),
-          label: const Text('New Detection Rule'),
+          label: Text(context.tr('Add AI Rule')),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: colors.primary,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
         ),
       ],
       child: Padding(
@@ -44,21 +52,24 @@ class RulesScreen extends StatelessWidget {
             Row(
               children: [
                 _StatPill(
-                  label: 'Total Rules',
+                  label: context.tr('Active Rules'),
                   value: '${adminProv.totalRulesCount}',
-                  color: AppColors.primary,
+                  color: colors.primary,
+                  colors: colors,
                 ),
                 const SizedBox(width: 12),
                 _StatPill(
-                  label: 'Active Rules',
+                  label: context.tr('Enabled'),
                   value: '${adminProv.activeRulesCount}',
-                  color: AppColors.success,
+                  color: colors.success,
+                  colors: colors,
                 ),
                 const SizedBox(width: 12),
                 _StatPill(
-                  label: 'Configured ROIs',
+                  label: 'ROIs',
                   value: '${adminProv.rois.length}',
-                  color: AppColors.secondary,
+                  color: colors.secondary,
+                  colors: colors,
                 ),
               ],
             ),
@@ -67,13 +78,28 @@ class RulesScreen extends StatelessWidget {
             // Rules List
             Expanded(
               child: rules.isEmpty
-                  ? const Center(child: Text('No AI rules configured.'))
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.tune_outlined, size: 48, color: colors.textMuted),
+                          const SizedBox(height: 12),
+                          Text(context.tr('No data found'), style: TextStyle(color: colors.textMuted)),
+                        ],
+                      ),
+                    )
                   : ListView.separated(
                       itemCount: rules.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final rule = rules[index];
-                        return Card(
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: colors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: colors.border),
+                            boxShadow: colors.cardShadow,
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.all(18),
                             child: Row(
@@ -84,13 +110,13 @@ class RulesScreen extends StatelessWidget {
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: rule.enabled
-                                        ? AppColors.primary.withOpacity(0.15)
-                                        : AppColors.textMuted.withOpacity(0.1),
+                                        ? colors.primary.withOpacity(0.12)
+                                        : colors.textMuted.withOpacity(0.08),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Icon(
                                     rule.enabled ? Icons.auto_awesome : Icons.power_settings_new,
-                                    color: rule.enabled ? AppColors.primary : AppColors.textMuted,
+                                    color: rule.enabled ? colors.primary : colors.textMuted,
                                     size: 24,
                                   ),
                                 ),
@@ -103,7 +129,10 @@ class RulesScreen extends StatelessWidget {
                                     children: [
                                       Row(
                                         children: [
-                                          Text(rule.name, style: AppTypography.h3),
+                                          Text(
+                                            context.tr(rule.name),
+                                            style: AppTypography.h3Of(context).copyWith(fontSize: 16),
+                                          ),
                                           const SizedBox(width: 10),
                                           SeverityBadge(severity: rule.severity),
                                           const SizedBox(width: 8),
@@ -111,16 +140,16 @@ class RulesScreen extends StatelessWidget {
                                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                             decoration: BoxDecoration(
                                               color: rule.enabled
-                                                  ? AppColors.success.withOpacity(0.15)
-                                                  : AppColors.textMuted.withOpacity(0.15),
+                                                  ? colors.success.withOpacity(0.12)
+                                                  : colors.textMuted.withOpacity(0.12),
                                               borderRadius: BorderRadius.circular(4),
                                             ),
                                             child: Text(
-                                              rule.enabled ? 'ACTIVE' : 'DISABLED',
+                                              rule.enabled ? context.tr('Active') : context.tr('Inactive'),
                                               style: TextStyle(
                                                 fontSize: 10,
                                                 fontWeight: FontWeight.bold,
-                                                color: rule.enabled ? AppColors.success : AppColors.textMuted,
+                                                color: rule.enabled ? colors.success : colors.textMuted,
                                               ),
                                             ),
                                           ),
@@ -128,8 +157,8 @@ class RulesScreen extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 6),
                                       Text(
-                                        'Type: ${rule.ruleTypeDisplayName} • Camera: ${rule.cameraName} (${rule.branchName})',
-                                        style: AppTypography.bodySecondary.copyWith(fontSize: 12),
+                                        '${context.tr("Rule Type")}: ${context.tr(rule.ruleTypeDisplayName)} • ${context.tr("Camera")}: ${rule.cameraName} (${rule.branchName})',
+                                        style: TextStyle(fontSize: 12, color: colors.textSecondary),
                                       ),
                                       const SizedBox(height: 12),
 
@@ -140,19 +169,22 @@ class RulesScreen extends StatelessWidget {
                                         children: [
                                           _ParamBadge(
                                             icon: Icons.timer_outlined,
-                                            label: 'Duration Threshold',
-                                            value: '${rule.durationSeconds} seconds',
+                                            label: context.tr('Cooldown (Seconds)'),
+                                            value: '${rule.durationSeconds}s',
+                                            colors: colors,
                                           ),
                                           _ParamBadge(
                                             icon: Icons.group_outlined,
                                             label: 'Min Occupancy',
                                             value: '${rule.minPeople} persons',
+                                            colors: colors,
                                           ),
                                           _ParamBadge(
                                             icon: Icons.crop_square,
-                                            label: 'Target ROI',
+                                            label: 'ROI Zone',
                                             value: rule.roiName ?? 'Full Frame',
-                                            color: AppColors.secondary,
+                                            color: colors.secondary,
+                                            colors: colors,
                                           ),
                                         ],
                                       ),
@@ -165,12 +197,13 @@ class RulesScreen extends StatelessWidget {
                                   children: [
                                     Switch(
                                       value: rule.enabled,
+                                      activeColor: colors.primary,
                                       onChanged: (_) => adminProv.toggleRuleEnabled(rule.id),
                                     ),
                                     Row(
                                       children: [
                                         IconButton(
-                                          icon: const Icon(Icons.crop, size: 18),
+                                          icon: Icon(Icons.crop, size: 18, color: colors.textSecondary),
                                           tooltip: 'Edit ROI Polygon',
                                           onPressed: () {
                                             final roi = adminProv.getRoiById(rule.roiId ?? '');
@@ -185,8 +218,8 @@ class RulesScreen extends StatelessWidget {
                                           },
                                         ),
                                         IconButton(
-                                          icon: const Icon(Icons.edit_outlined, size: 18),
-                                          tooltip: 'Edit Rule',
+                                          icon: Icon(Icons.edit_outlined, size: 18, color: colors.textSecondary),
+                                          tooltip: context.tr('Edit AI Rule'),
                                           onPressed: () => _openRuleFormDialog(context, rule: rule),
                                         ),
                                       ],
@@ -211,8 +244,14 @@ class _StatPill extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+  final AppSemanticColors colors;
 
-  const _StatPill({required this.label, required this.value, required this.color});
+  const _StatPill({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.colors,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -221,7 +260,7 @@ class _StatPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Row(
         children: [
@@ -242,30 +281,32 @@ class _ParamBadge extends StatelessWidget {
   final String label;
   final String value;
   final Color? color;
+  final AppSemanticColors colors;
 
   const _ParamBadge({
     required this.icon,
     required this.label,
     required this.value,
     this.color,
+    required this.colors,
   });
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppColors.textSecondary;
+    final c = color ?? colors.textSecondary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: colors.surfaceSubtle,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.borderSubtle),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: c),
           const SizedBox(width: 6),
-          Text('$label: ', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+          Text('$label: ', style: TextStyle(fontSize: 11, color: colors.textMuted)),
           Text(
             value,
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: c),
@@ -365,6 +406,7 @@ class _RuleFormDialogState extends State<_RuleFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final adminProv = context.watch<AdminProvider>();
     final camProv = context.watch<CameraProvider>();
     final cameras = camProv.allCameras;
@@ -378,8 +420,11 @@ class _RuleFormDialogState extends State<_RuleFormDialog> {
     }
 
     return Dialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      backgroundColor: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: colors.border),
+      ),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 540),
         padding: const EdgeInsets.all(24),
@@ -390,19 +435,24 @@ class _RuleFormDialogState extends State<_RuleFormDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.initialRule != null ? 'Edit AI Detection Rule' : 'Create AI Detection Rule',
-                style: AppTypography.h2,
+                widget.initialRule != null
+                    ? context.tr('Edit AI Rule')
+                    : context.tr('Add AI Rule'),
+                style: AppTypography.h3Of(context),
               ),
-              const SizedBox(height: 8),
-              const Text(
+              const SizedBox(height: 6),
+              Text(
                 'Configure computer vision parameters for automated event detection.',
-                style: AppTypography.caption,
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
               ),
-              const Divider(height: 24),
+              Divider(height: 24, color: colors.borderSubtle),
               TextFormField(
                 controller: _nameController,
-                style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                decoration: const InputDecoration(labelText: 'Rule Name'),
+                style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                decoration: InputDecoration(
+                  labelText: context.tr('Rule Name'),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
                 validator: (v) => v == null || v.isEmpty ? 'Rule name required' : null,
               ),
               const SizedBox(height: 12),
@@ -411,14 +461,17 @@ class _RuleFormDialogState extends State<_RuleFormDialog> {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _ruleType,
-                      dropdownColor: AppColors.surface,
-                      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                      decoration: const InputDecoration(labelText: 'Rule Type'),
-                      items: const [
-                        DropdownMenuItem(value: 'cashier_empty', child: Text('Unattended Cashier')),
-                        DropdownMenuItem(value: 'perimeter_breach', child: Text('Perimeter Breach')),
-                        DropdownMenuItem(value: 'loitering', child: Text('Suspicious Loitering')),
-                        DropdownMenuItem(value: 'occupancy_limit', child: Text('Max Occupancy')),
+                      dropdownColor: colors.surfaceElevated,
+                      style: TextStyle(fontSize: 13, color: colors.textPrimary),
+                      decoration: InputDecoration(
+                        labelText: context.tr('Rule Type'),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      items: [
+                        DropdownMenuItem(value: 'cashier_empty', child: Text(context.tr('Cashier Area Empty'))),
+                        DropdownMenuItem(value: 'perimeter_breach', child: Text(context.tr('Perimeter Breach'))),
+                        DropdownMenuItem(value: 'loitering', child: Text(context.tr('Loitering Detected'))),
+                        DropdownMenuItem(value: 'occupancy_limit', child: Text(context.tr('Overcrowding Alert'))),
                       ],
                       onChanged: (val) => setState(() => _ruleType = val ?? 'cashier_empty'),
                     ),
@@ -427,13 +480,16 @@ class _RuleFormDialogState extends State<_RuleFormDialog> {
                   Expanded(
                     child: DropdownButtonFormField<IncidentSeverity>(
                       value: _severity,
-                      dropdownColor: AppColors.surface,
-                      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                      decoration: const InputDecoration(labelText: 'Alert Severity'),
-                      items: const [
-                        DropdownMenuItem(value: IncidentSeverity.critical, child: Text('Critical')),
-                        DropdownMenuItem(value: IncidentSeverity.warning, child: Text('Warning')),
-                        DropdownMenuItem(value: IncidentSeverity.info, child: Text('Information')),
+                      dropdownColor: colors.surfaceElevated,
+                      style: TextStyle(fontSize: 13, color: colors.textPrimary),
+                      decoration: InputDecoration(
+                        labelText: context.tr('Alert Severity'),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      items: [
+                        DropdownMenuItem(value: IncidentSeverity.critical, child: Text(context.tr('Critical'))),
+                        DropdownMenuItem(value: IncidentSeverity.warning, child: Text(context.tr('Warning'))),
+                        DropdownMenuItem(value: IncidentSeverity.info, child: Text(context.tr('Info'))),
                       ],
                       onChanged: (val) => setState(() => _severity = val ?? IncidentSeverity.critical),
                     ),
@@ -447,8 +503,11 @@ class _RuleFormDialogState extends State<_RuleFormDialog> {
                     child: TextFormField(
                       controller: _durationController,
                       keyboardType: TextInputType.number,
-                      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                      decoration: const InputDecoration(labelText: 'Duration (Seconds)'),
+                      style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                      decoration: InputDecoration(
+                        labelText: '${context.tr("Cooldown (Seconds)")} (e.g. 180)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -456,8 +515,11 @@ class _RuleFormDialogState extends State<_RuleFormDialog> {
                     child: TextFormField(
                       controller: _minPeopleController,
                       keyboardType: TextInputType.number,
-                      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                      decoration: const InputDecoration(labelText: 'Min People Count'),
+                      style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                      decoration: InputDecoration(
+                        labelText: 'Min People (e.g. 0)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                     ),
                   ),
                 ],
@@ -468,12 +530,15 @@ class _RuleFormDialogState extends State<_RuleFormDialog> {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _selectedCameraId,
-                      dropdownColor: AppColors.surface,
-                      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                      decoration: const InputDecoration(labelText: 'Target Camera'),
-                      items: cameras.map((c) {
-                        return DropdownMenuItem(value: c.id, child: Text(c.name));
-                      }).toList(),
+                      dropdownColor: colors.surfaceElevated,
+                      style: TextStyle(fontSize: 13, color: colors.textPrimary),
+                      decoration: InputDecoration(
+                        labelText: context.tr('Camera'),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      items: cameras
+                          .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+                          .toList(),
                       onChanged: (val) => setState(() => _selectedCameraId = val),
                     ),
                   ),
@@ -481,12 +546,15 @@ class _RuleFormDialogState extends State<_RuleFormDialog> {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _selectedRoiId,
-                      dropdownColor: AppColors.surface,
-                      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                      decoration: const InputDecoration(labelText: 'Target ROI Zone'),
-                      items: rois.map((r) {
-                        return DropdownMenuItem(value: r.id, child: Text(r.name));
-                      }).toList(),
+                      dropdownColor: colors.surfaceElevated,
+                      style: TextStyle(fontSize: 13, color: colors.textPrimary),
+                      decoration: InputDecoration(
+                        labelText: 'ROI Zone',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      items: rois
+                          .map((r) => DropdownMenuItem(value: r.id, child: Text(r.name)))
+                          .toList(),
                       onChanged: (val) => setState(() => _selectedRoiId = val),
                     ),
                   ),
@@ -496,15 +564,18 @@ class _RuleFormDialogState extends State<_RuleFormDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  OutlinedButton(
+                  TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                    child: Text(context.tr('Cancel'), style: TextStyle(color: colors.textSecondary)),
                   ),
                   const SizedBox(width: 12),
-                  ElevatedButton.icon(
+                  ElevatedButton(
                     onPressed: _submit,
-                    icon: const Icon(Icons.check, size: 16),
-                    label: const Text('Save Rule'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: Text(context.tr('Save Changes')),
                   ),
                 ],
               ),

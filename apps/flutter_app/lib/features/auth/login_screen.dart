@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/localization/app_locale_provider.dart';
 import '../../models/user_profile.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
+import '../../widgets/language_toggle_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -35,172 +39,264 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final colors = context.colors;
+    final themeProv = context.watch<ThemeProvider>();
+    final localeProv = context.watch<AppLocaleProvider>();
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 440),
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border, width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+    return Directionality(
+      textDirection: localeProv.textDirection,
+      child: Scaffold(
+        backgroundColor: colors.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          actions: [
+            const LanguageToggleButton(),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(
+                themeProv.isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                color: colors.textSecondary,
+                size: 20,
+              ),
+              tooltip: context.tr('Toggle Theme'),
+              onPressed: () => themeProv.toggleTheme(),
             ),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Brand Header
-                  Center(
-                    child: Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.primary, AppColors.secondary],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+            const SizedBox(width: 16),
+          ],
+        ),
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 440),
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colors.border),
+                boxShadow: colors.cardShadow,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Brand Logo & Title
+                    Center(
+                      child: Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [colors.primary, colors.secondary],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colors.primary.withOpacity(0.35),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        borderRadius: BorderRadius.circular(12),
+                        child: const Icon(Icons.security, color: Colors.white, size: 30),
                       ),
-                      child: const Icon(Icons.security, color: Colors.white, size: 30),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'LensIQ Enterprise',
-                    style: AppTypography.h1,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'AI CCTV Monitoring & Stream Gateway',
-                    style: AppTypography.bodySecondary.copyWith(fontSize: 13),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 28),
+                    const SizedBox(height: 16),
+                    Text(
+                      context.tr('LensIQ Enterprise'),
+                      style: AppTypography.h1Of(context).copyWith(fontSize: 22),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      context.tr('AI Surveillance & Anomaly Detection'),
+                      style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
 
-                  // Error Banner
-                  if (auth.errorMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.error.withOpacity(0.4)),
+                    // Error Banner
+                    if (auth.errorMessage != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colors.error.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: colors.error.withOpacity(0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.error_outline, color: colors.error, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                auth.errorMessage!,
+                                style: TextStyle(color: colors.error, fontSize: 13),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(height: 18),
+                    ],
+
+                    // Email Field
+                    Text(
+                      context.tr('Email'),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                    ),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _emailController,
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14),
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        prefixIcon: Icon(Icons.email_outlined, size: 18, color: colors.textMuted),
+                        hintText: 'name@company.com',
+                        hintStyle: TextStyle(color: colors.textMuted),
+                        filled: true,
+                        fillColor: colors.inputFill,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: colors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: colors.border),
+                        ),
+                      ),
+                      validator: (v) => v == null || v.isEmpty ? context.tr('Please enter email and password') : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Password Field
+                    Text(
+                      context.tr('Password'),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                    ),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14),
+                      decoration: InputDecoration(
+                        prefixIcon: Icon(Icons.lock_outline, size: 18, color: colors.textMuted),
+                        hintText: '••••••••',
+                        hintStyle: TextStyle(color: colors.textMuted),
+                        filled: true,
+                        fillColor: colors.inputFill,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: colors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: colors.border),
+                        ),
+                      ),
+                      validator: (v) => v == null || v.isEmpty ? context.tr('Please enter email and password') : null,
+                    ),
+                    const SizedBox(height: 22),
+
+                    // Sign In Button
+                    ElevatedButton(
+                      onPressed: auth.isLoading ? null : _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.primary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 44),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: auth.isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : Text(
+                              context.tr('Sign In'),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Demo Role Login Divider
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: colors.borderSubtle)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            context.tr('Quick Demo Accounts').toUpperCase(),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: colors.textMuted),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: colors.borderSubtle)),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Demo Accounts
+                    _DemoRoleButton(
+                      title: context.tr('Super Admin'),
+                      subtitle: context.tr('Global Access'),
+                      icon: Icons.admin_panel_settings_outlined,
+                      color: colors.secondary,
+                      colors: colors,
+                      onTap: () => auth.switchDemoRole(UserRole.superAdmin),
+                    ),
+                    const SizedBox(height: 8),
+                    _DemoRoleButton(
+                      title: context.tr('Brand Manager'),
+                      subtitle: context.tr('Brand Scoped'),
+                      icon: Icons.storefront_outlined,
+                      color: colors.primary,
+                      colors: colors,
+                      onTap: () => auth.switchDemoRole(UserRole.brandManager),
+                    ),
+                    const SizedBox(height: 8),
+                    _DemoRoleButton(
+                      title: context.tr('Branch Security'),
+                      subtitle: context.tr('Branch Scoped'),
+                      icon: Icons.security_outlined,
+                      color: colors.warning,
+                      colors: colors,
+                      onTap: () => auth.switchDemoRole(UserRole.branchSecurity),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // POM Agency Attribution
+                    InkWell(
+                      borderRadius: BorderRadius.circular(4),
+                      onTap: () async {
+                        final uri = Uri.parse('https://pom-agency.online');
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      },
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.error_outline, color: AppColors.error, size: 18),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              auth.errorMessage!,
-                              style: const TextStyle(color: AppColors.error, fontSize: 13),
+                          Text(
+                            context.tr('Developed by POM Agency'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colors.textMuted,
+                              decoration: TextDecoration.underline,
                             ),
                           ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.open_in_new, size: 11, color: colors.textMuted),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
                   ],
-
-                  // Email Field
-                  const Text('Work Email', style: AppTypography.bodyMedium),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _emailController,
-                    style: const TextStyle(color: AppColors.textPrimary),
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.email_outlined, size: 18, color: AppColors.textMuted),
-                      hintText: 'name@company.com',
-                    ),
-                    validator: (v) => v == null || v.isEmpty ? 'Email is required' : null,
-                  ),
-                  const SizedBox(height: 18),
-
-                  // Password Field
-                  const Text('Password', style: AppTypography.bodyMedium),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    style: const TextStyle(color: AppColors.textPrimary),
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.lock_outline, size: 18, color: AppColors.textMuted),
-                      hintText: '••••••••',
-                    ),
-                    validator: (v) => v == null || v.isEmpty ? 'Password is required' : null,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Sign In Button
-                  ElevatedButton(
-                    onPressed: auth.isLoading ? null : _submit,
-                    style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 46)),
-                    child: auth.isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('Sign In to Dashboard', style: TextStyle(fontSize: 15)),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Quick Demo Role Login Section
-                  Row(
-                    children: const [
-                      Expanded(child: Divider()),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          'OR QUICK DEMO ACCESS',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textMuted),
-                        ),
-                      ),
-                      Expanded(child: Divider()),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  _DemoRoleButton(
-                    title: 'Super Admin',
-                    subtitle: 'All Tenants & Companies',
-                    icon: Icons.admin_panel_settings_outlined,
-                    color: AppColors.secondary,
-                    onTap: () => auth.switchDemoRole(UserRole.superAdmin),
-                  ),
-                  const SizedBox(height: 8),
-                  _DemoRoleButton(
-                    title: 'Brand Manager',
-                    subtitle: 'Ego Fashion Brand Ops & Retail KPIs',
-                    icon: Icons.storefront_outlined,
-                    color: AppColors.primary,
-                    onTap: () => auth.switchDemoRole(UserRole.brandManager),
-                  ),
-                  const SizedBox(height: 8),
-                  _DemoRoleButton(
-                    title: 'Branch Security',
-                    subtitle: 'Mall of Arabia Cashier & Live Feeds',
-                    icon: Icons.security_outlined,
-                    color: AppColors.warning,
-                    onTap: () => auth.switchDemoRole(UserRole.branchSecurity),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -215,6 +311,7 @@ class _DemoRoleButton extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   final Color color;
+  final AppSemanticColors colors;
   final VoidCallback onTap;
 
   const _DemoRoleButton({
@@ -222,6 +319,7 @@ class _DemoRoleButton extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.color,
+    required this.colors,
     required this.onTap,
   });
 
@@ -233,16 +331,16 @@ class _DemoRoleButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: AppColors.background.withOpacity(0.6),
+          color: colors.surfaceSubtle,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: colors.borderSubtle),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Icon(icon, color: color, size: 18),
@@ -252,12 +350,18 @@ class _DemoRoleButton extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppTypography.bodyMedium.copyWith(fontSize: 13)),
-                  Text(subtitle, style: AppTypography.caption.copyWith(fontSize: 11)),
+                  Text(
+                    title,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 11, color: colors.textMuted),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
+            Icon(Icons.chevron_right, size: 18, color: colors.textMuted),
           ],
         ),
       ),

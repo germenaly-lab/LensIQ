@@ -40,4 +40,24 @@ class CompanyModel {
         'camera_count': cameraCount,
         'created_at': createdAt.toIso8601String(),
       };
+
+  CompanyModel copyWith({
+    String? id,
+    String? name,
+    String? slug,
+    int? brandCount,
+    int? branchCount,
+    int? cameraCount,
+    DateTime? createdAt,
+  }) {
+    return CompanyModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      slug: slug ?? this.slug,
+      brandCount: brandCount ?? this.brandCount,
+      branchCount: branchCount ?? this.branchCount,
+      cameraCount: cameraCount ?? this.cameraCount,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }

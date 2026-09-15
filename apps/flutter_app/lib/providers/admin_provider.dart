@@ -159,6 +159,129 @@ class AdminProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // --- Company Management ---
+  void addCompany(CompanyModel company) {
+    _companies.insert(0, company);
+    _recordAudit(
+      action: 'Company created',
+      actorName: 'Alex Vance (Super Admin)',
+      actorRole: 'super_admin',
+      details: 'Created enterprise tenant "${company.name}" (Slug: ${company.slug}).',
+      category: 'company',
+    );
+    notifyListeners();
+  }
+
+  void updateCompany(CompanyModel company) {
+    final idx = _companies.indexWhere((c) => c.id == company.id);
+    if (idx != -1) {
+      _companies[idx] = company;
+      _recordAudit(
+        action: 'Company updated',
+        actorName: 'Alex Vance (Super Admin)',
+        actorRole: 'super_admin',
+        details: 'Updated details for company "${company.name}".',
+        category: 'company',
+      );
+      notifyListeners();
+    }
+  }
+
+  void deleteCompany(String companyId) {
+    final company = _companies.firstWhere((c) => c.id == companyId, orElse: () => _companies.first);
+    _companies.removeWhere((c) => c.id == companyId);
+    _recordAudit(
+      action: 'Company deleted',
+      actorName: 'Alex Vance (Super Admin)',
+      actorRole: 'super_admin',
+      details: 'Removed enterprise tenant "${company.name}".',
+      category: 'company',
+    );
+    notifyListeners();
+  }
+
+  // --- Brand Management ---
+  void addBrand(BrandModel brand) {
+    _brands.insert(0, brand);
+    _recordAudit(
+      action: 'Brand created',
+      actorName: 'Alex Vance (Super Admin)',
+      actorRole: 'super_admin',
+      details: 'Created brand "${brand.name}" under company "${brand.companyName}".',
+      category: 'brand',
+    );
+    notifyListeners();
+  }
+
+  void updateBrand(BrandModel brand) {
+    final idx = _brands.indexWhere((b) => b.id == brand.id);
+    if (idx != -1) {
+      _brands[idx] = brand;
+      _recordAudit(
+        action: 'Brand updated',
+        actorName: 'Alex Vance (Super Admin)',
+        actorRole: 'super_admin',
+        details: 'Updated details for brand "${brand.name}".',
+        category: 'brand',
+      );
+      notifyListeners();
+    }
+  }
+
+  void deleteBrand(String brandId) {
+    final brand = _brands.firstWhere((b) => b.id == brandId, orElse: () => _brands.first);
+    _brands.removeWhere((b) => b.id == brandId);
+    _recordAudit(
+      action: 'Brand deleted',
+      actorName: 'Alex Vance (Super Admin)',
+      actorRole: 'super_admin',
+      details: 'Removed brand "${brand.name}".',
+      category: 'brand',
+    );
+    notifyListeners();
+  }
+
+  // --- Branch Management ---
+  void addBranch(BranchModel branch) {
+    _branches.insert(0, branch);
+    _recordAudit(
+      action: 'Branch created',
+      actorName: 'Alex Vance (Super Admin)',
+      actorRole: 'super_admin',
+      details: 'Created branch "${branch.name}" (Code: ${branch.code}).',
+      category: 'branch',
+    );
+    notifyListeners();
+  }
+
+  void updateBranch(BranchModel branch) {
+    final idx = _branches.indexWhere((b) => b.id == branch.id);
+    if (idx != -1) {
+      _branches[idx] = branch;
+      _recordAudit(
+        action: 'Branch updated',
+        actorName: 'Alex Vance (Super Admin)',
+        actorRole: 'super_admin',
+        details: 'Updated details for branch "${branch.name}" (Status: ${branch.status}).',
+        category: 'branch',
+      );
+      notifyListeners();
+    }
+  }
+
+  void deleteBranch(String branchId) {
+    final branch = _branches.firstWhere((b) => b.id == branchId, orElse: () => _branches.first);
+    _branches.removeWhere((b) => b.id == branchId);
+    _recordAudit(
+      action: 'Branch deleted',
+      actorName: 'Alex Vance (Super Admin)',
+      actorRole: 'super_admin',
+      details: 'Removed branch "${branch.name}".',
+      category: 'branch',
+    );
+    notifyListeners();
+  }
+
   // --- Audit Trail ---
   void _recordAudit({
     required String action,

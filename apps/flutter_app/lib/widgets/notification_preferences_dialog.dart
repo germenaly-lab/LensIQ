@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import '../core/localization/app_locale_provider.dart';
 import '../models/notification_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
@@ -48,11 +49,15 @@ class _NotificationPreferencesDialogState extends State<NotificationPreferencesD
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final user = context.watch<AuthProvider>().currentUser;
 
     return Dialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      backgroundColor: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: colors.border),
+      ),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 480),
         padding: const EdgeInsets.all(24),
@@ -62,47 +67,48 @@ class _NotificationPreferencesDialogState extends State<NotificationPreferencesD
           children: [
             Row(
               children: [
-                const Icon(Icons.tune, color: AppColors.primaryLight, size: 22),
+                Icon(Icons.tune, color: colors.primary, size: 22),
                 const SizedBox(width: 10),
-                Text('Notification Preferences', style: AppTypography.h3),
+                Text(context.tr('Notification Preferences'), style: AppTypography.h3Of(context)),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.close, size: 18, color: Colors.white70),
+                  icon: Icon(Icons.close, size: 18, color: colors.textSecondary),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
             ),
             const SizedBox(height: 6),
             Text(
-              'Configure which security alerts trigger real-time push notifications to your devices.',
-              style: AppTypography.caption,
+              context.tr('Configure which security alerts trigger real-time push notifications to your devices.'),
+              style: AppTypography.captionOf(context),
             ),
             if (user != null) ...[
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.background,
+                  color: colors.background,
                   borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: colors.border),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.shield_outlined, size: 14, color: AppColors.primaryLight),
+                    Icon(Icons.shield_outlined, size: 14, color: colors.primary),
                     const SizedBox(width: 6),
                     Text(
-                      'Role Scope: ${user.role.displayName}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                      '${context.tr('Role')}: ${context.tr(user.role.displayName)}',
+                      style: TextStyle(color: colors.textPrimary, fontSize: 11, fontWeight: FontWeight.w600),
                     ),
                     const Spacer(),
                     Text(
                       user.brandName ?? user.branchName ?? 'Global',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                      style: TextStyle(color: colors.textSecondary, fontSize: 11),
                     ),
                   ],
                 ),
               ),
             ],
-            const Divider(height: 24),
+            Divider(height: 24, color: colors.border),
 
             // Toggles
             _buildSwitchTile(
@@ -137,7 +143,7 @@ class _NotificationPreferencesDialogState extends State<NotificationPreferencesD
               title: 'AI Computer Vision Events',
               subtitle: 'YOLOv8 person detection and ROI rule triggers',
               value: _aiEvents,
-              activeColor: AppColors.primary,
+              activeColor: colors.primary,
               onChanged: (val) => setState(() => _aiEvents = val),
             ),
 
@@ -147,12 +153,12 @@ class _NotificationPreferencesDialogState extends State<NotificationPreferencesD
               children: [
                 OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
+                  child: Text(context.tr('Cancel')),
                 ),
                 const SizedBox(width: 10),
                 ElevatedButton(
                   onPressed: _savePreferences,
-                  child: const Text('Save Preferences'),
+                  child: Text(context.tr('Save Preferences')),
                 ),
               ],
             ),
@@ -169,12 +175,13 @@ class _NotificationPreferencesDialogState extends State<NotificationPreferencesD
     required Color activeColor,
     required ValueChanged<bool> onChanged,
   }) {
+    final colors = context.colors;
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
       dense: true,
       activeColor: activeColor,
-      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+      title: Text(context.tr(title), style: TextStyle(color: colors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle, style: TextStyle(color: colors.textSecondary, fontSize: 11)),
       value: value,
       onChanged: onChanged,
     );

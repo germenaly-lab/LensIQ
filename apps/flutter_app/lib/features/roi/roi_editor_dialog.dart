@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/localization/app_locale_provider.dart';
 import '../../../models/roi.dart';
 
 class RoiEditorDialog extends StatefulWidget {
@@ -52,7 +53,7 @@ class _RoiEditorDialogState extends State<RoiEditorDialog> {
     if (_nameController.text.trim().isEmpty) return;
     if (_points.length < 3) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('At least 3 vertices required to form a polygon.')),
+        SnackBar(content: Text(context.tr('At least 3 vertices required to form a polygon.'))),
       );
       return;
     }
@@ -71,9 +72,13 @@ class _RoiEditorDialogState extends State<RoiEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Dialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      backgroundColor: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: colors.border),
+      ),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 820, maxHeight: 720),
         padding: const EdgeInsets.all(24),
@@ -89,26 +94,26 @@ class _RoiEditorDialogState extends State<RoiEditorDialog> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.15),
+                        color: colors.primary.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.crop_square, color: AppColors.primary, size: 20),
+                      child: Icon(Icons.crop_square, color: colors.primary, size: 20),
                     ),
                     const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('ROI Polygon Configuration', style: AppTypography.h2),
+                        Text(context.tr('ROI Polygon Configuration'), style: AppTypography.h2Of(context)),
                         Text(
-                          'Target Camera: ${widget.cameraName} • Tap canvas to add point or drag points',
-                          style: AppTypography.caption,
+                          '${context.tr('Target Camera')}: ${widget.cameraName} • ${context.tr('Tap canvas to add point or drag points')}',
+                          style: AppTypography.captionOf(context),
                         ),
                       ],
                     ),
                   ],
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, size: 20, color: AppColors.textMuted),
+                  icon: Icon(Icons.close, size: 20, color: colors.textSecondary),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
@@ -157,7 +162,7 @@ class _RoiEditorDialogState extends State<RoiEditorDialog> {
                             decoration: BoxDecoration(
                               color: Colors.black,
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: AppColors.border),
+                              border: Border.all(color: colors.border),
                             ),
                             child: Stack(
                               children: [
@@ -209,18 +214,18 @@ class _RoiEditorDialogState extends State<RoiEditorDialog> {
                         children: [
                           TextField(
                             controller: _nameController,
-                            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                            decoration: const InputDecoration(
-                              labelText: 'Zone Name',
+                            style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                            decoration: InputDecoration(
+                              labelText: context.tr('Zone Name'),
                               hintText: 'e.g. Cashier 01 Active Counter',
                             ),
                           ),
                           const SizedBox(height: 16),
                           DropdownButtonFormField<String>(
                             value: _zoneType,
-                            dropdownColor: AppColors.surface,
-                            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                            decoration: const InputDecoration(labelText: 'Zone Purpose'),
+                            dropdownColor: colors.surface,
+                            style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                            decoration: InputDecoration(labelText: context.tr('Zone Purpose')),
                             items: const [
                               DropdownMenuItem(value: 'cashier_desk', child: Text('Cashier Counter')),
                               DropdownMenuItem(value: 'backstore_perimeter', child: Text('Restricted Perimeter')),
@@ -230,7 +235,7 @@ class _RoiEditorDialogState extends State<RoiEditorDialog> {
                             onChanged: (val) => setState(() => _zoneType = val ?? 'cashier_desk'),
                           ),
                           const SizedBox(height: 16),
-                          const Text('Polygon Color', style: AppTypography.bodyMedium),
+                          Text(context.tr('Polygon Color'), style: AppTypography.bodyMediumOf(context)),
                           const SizedBox(height: 8),
                           Row(
                             children: [
@@ -272,7 +277,7 @@ class _RoiEditorDialogState extends State<RoiEditorDialog> {
                               });
                             },
                             icon: const Icon(Icons.refresh, size: 16),
-                            label: const Text('Reset to Default Box'),
+                            label: Text(context.tr('Reset to Default Box')),
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size(double.infinity, 38),
                             ),
@@ -281,7 +286,7 @@ class _RoiEditorDialogState extends State<RoiEditorDialog> {
                           OutlinedButton.icon(
                             onPressed: () => setState(() => _points.clear()),
                             icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
-                            label: const Text('Clear All Points', style: TextStyle(color: AppColors.error)),
+                            label: Text(context.tr('Clear All Points'), style: const TextStyle(color: AppColors.error)),
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size(double.infinity, 38),
                               side: BorderSide(color: AppColors.error.withOpacity(0.3)),
@@ -294,7 +299,7 @@ class _RoiEditorDialogState extends State<RoiEditorDialog> {
                 ],
               ),
             ),
-            const Divider(height: 24),
+            Divider(height: 24, color: colors.border),
 
             // Action Buttons
             Row(
@@ -302,13 +307,13 @@ class _RoiEditorDialogState extends State<RoiEditorDialog> {
               children: [
                 OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
+                  child: Text(context.tr('Cancel')),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton.icon(
                   onPressed: _save,
                   icon: const Icon(Icons.check, size: 16),
-                  label: const Text('Save ROI Polygon'),
+                  label: Text(context.tr('Save ROI Polygon')),
                 ),
               ],
             ),
