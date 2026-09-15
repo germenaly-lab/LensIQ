@@ -65,4 +65,23 @@ class CameraRepository {
     );
     return MockDataService.createMockStreamSession(cameraId, camera.sourceType);
   }
+
+  /**
+   * Provisions a new camera in the backend
+   */
+  Future<CameraModel?> createCamera(UserProfile user, CameraModel camera) async {
+    final response = await _apiClient.post(
+      '/cameras',
+      user: user,
+      body: camera.toJson(),
+      fromJson: (json) => CameraModel.fromJson(json as Map<String, dynamic>),
+    );
+
+    if (response.success && response.data != null) {
+      return response.data!;
+    }
+
+    // Return the camera optimistically for offline/demo operation
+    return camera;
+  }
 }

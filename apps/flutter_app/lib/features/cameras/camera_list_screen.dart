@@ -5,12 +5,14 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/responsive_util.dart';
 import '../../models/camera.dart';
+import '../../models/user_profile.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/camera_provider.dart';
 import '../../widgets/responsive_scaffold.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/empty_state_view.dart';
 import '../../widgets/loading_view.dart';
+import 'widgets/add_camera_dialog.dart';
 
 class CameraListScreen extends StatefulWidget {
   const CameraListScreen({Key? key}) : super(key: key);
@@ -31,6 +33,23 @@ class _CameraListScreenState extends State<CameraListScreen> {
         context.read<CameraProvider>().loadCameras(user);
       }
     });
+  }
+
+  void _openAddCameraDialog(BuildContext context, UserProfile user) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AddCameraDialog(
+        onAdd: (newCamera) {
+          context.read<CameraProvider>().addCamera(user, newCamera);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Camera "${newCamera.name}" successfully provisioned!'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -55,6 +74,17 @@ class _CameraListScreenState extends State<CameraListScreen> {
       currentRoute: '/cameras',
       title: 'Multi-Source Cameras',
       actions: [
+        if (user.role == UserRole.superAdmin || user.role == UserRole.brandManager)
+          ElevatedButton.icon(
+            onPressed: () => _openAddCameraDialog(context, user),
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Add Camera'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        const SizedBox(width: 8),
         IconButton(
           icon: const Icon(Icons.refresh, size: 20),
           tooltip: 'Refresh Cameras',

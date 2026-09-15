@@ -154,5 +154,30 @@ void main() {
 
       expect(find.text('HIKVISION P2P'), findsOneWidget);
     });
+
+    // ------------------------------------------------------------------------
+    // Test 6: Camera Provisioning (Add Camera)
+    // ------------------------------------------------------------------------
+    test('8. Provisions new camera and prepends it to the camera inventory', () async {
+      final user = MockDataService.demoUsers.first;
+      await cameraProvider.loadCameras(user);
+      final initialCount = cameraProvider.totalCamerasCount;
+
+      final newCam = CameraModel(
+        id: 'new-test-cam-999',
+        name: 'Drive-Thru Test Cam',
+        companyId: user.companyId ?? '11111111-1111-1111-1111-111111111111',
+        brandId: user.brandId ?? '22222222-2222-2222-2222-222222222222',
+        branchId: user.branchId ?? '33333333-3333-3333-3333-333333333333',
+        sourceType: CameraSourceType.rtsp,
+        status: CameraStatus.online,
+        streamProfile: 'main',
+        rtspUrl: 'rtsp://test.local/ch1',
+      );
+
+      await cameraProvider.addCamera(user, newCam);
+      expect(cameraProvider.totalCamerasCount, equals(initialCount + 1));
+      expect(cameraProvider.cameras.first.id, equals('new-test-cam-999'));
+    });
   });
 }

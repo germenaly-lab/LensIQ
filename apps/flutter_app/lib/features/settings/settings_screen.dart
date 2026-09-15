@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/responsive_scaffold.dart';
 import '../../widgets/loading_view.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -124,7 +125,117 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // 3. Theme & Preferences
+                // 3. Mobile Companion Apps (Staff & Security)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.secondary.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.phone_android, color: AppColors.secondary, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text('Staff Mobile Companion Apps', style: AppTypography.h3),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Mobile apps are lightweight client applications for branch security guards and floor supervisors. They receive real-time push alerts, offline incident summaries, and cashier monitoring updates.',
+                          style: AppTypography.bodySecondary,
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.android, color: AppColors.success, size: 28),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: const [
+                                    Text('Android Staff Client (APK)', style: AppTypography.bodyMedium),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Direct install package for retail hand-held terminals and Android phones.',
+                                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  final uri = Uri.parse('/downloads/app-debug.apk');
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                },
+                                icon: const Icon(Icons.download, size: 16),
+                                label: const Text('Download APK'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.secondary,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.apple, color: AppColors.textPrimary, size: 28),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: const [
+                                    Text('iOS Companion App (iPhone & iPad)', style: AppTypography.bodyMedium),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Distributed via Apple TestFlight / Apple Business Manager for enterprise fleet.',
+                                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              OutlinedButton(
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('iOS TestFlight invitation links are sent via company MDM.'),
+                                    ),
+                                  );
+                                },
+                                child: const Text('Request Access'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // 4. Theme & Preferences
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -146,7 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // 4. Logout Action
+                // 5. Logout Action
                 ElevatedButton.icon(
                   onPressed: () => auth.logout(),
                   icon: const Icon(Icons.logout, size: 18),

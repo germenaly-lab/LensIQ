@@ -4,6 +4,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../models/user_profile.dart';
 import '../providers/auth_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class NavItem {
   final String title;
@@ -245,9 +246,43 @@ class EnterpriseSidebar extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 8),
+
+          // 5. Staff Mobile App Quick Download
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: () async {
+                final uri = Uri.parse('/downloads/app-debug.apk');
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.android, size: 16, color: AppColors.secondary),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Staff Mobile APK',
+                        style: TextStyle(fontSize: 12, color: AppColors.secondary, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Icon(Icons.file_download_outlined, size: 16, color: AppColors.secondary),
+                  ],
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 10),
 
-          // 5. Logout Button
+          // 6. Logout Button
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: OutlinedButton.icon(

@@ -79,4 +79,25 @@ class CameraProvider extends ChangeNotifier {
     _activeSession = null;
     notifyListeners();
   }
+
+  Future<void> addCamera(UserProfile user, CameraModel newCam) async {
+    // Optimistic UI update
+    _cameras.insert(0, newCam);
+    notifyListeners();
+
+    try {
+      final persisted = await _repository.createCamera(user, newCam);
+      if (persisted != null) {
+        final index = _cameras.indexWhere((c) => c.id == newCam.id);
+        if (index != -1) {
+          _cameras[index] = persisted;
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      // Keep optimistic entry or mark error
+      _errorMessage = 'Warning: Camera saved locally ($e)';
+      notifyListeners();
+    }
+  }
 }
