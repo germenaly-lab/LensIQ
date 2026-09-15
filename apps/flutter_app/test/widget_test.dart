@@ -16,6 +16,11 @@ import 'package:lensiq_app/providers/camera_provider.dart';
 import 'package:lensiq_app/providers/incident_provider.dart';
 import 'package:lensiq_app/providers/admin_provider.dart';
 import 'package:lensiq_app/providers/theme_provider.dart';
+import 'package:lensiq_app/models/notification_item.dart';
+import 'package:lensiq_app/services/fcm_notification_service.dart';
+import 'package:lensiq_app/repositories/notification_repository.dart';
+import 'package:lensiq_app/providers/notification_provider.dart';
+import 'package:lensiq_app/widgets/notification_bell_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:lensiq_app/widgets/status_badge.dart';
 import 'package:lensiq_app/features/cameras/widgets/live_camera_player_widget.dart';
@@ -33,6 +38,9 @@ void main() {
     late IncidentRepository incidentRepo;
     late IncidentProvider incidentProvider;
     late AdminProvider adminProvider;
+    late FcmNotificationService fcmService;
+    late NotificationRepository notificationRepo;
+    late NotificationProvider notificationProvider;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
@@ -45,6 +53,9 @@ void main() {
       incidentRepo = IncidentRepository();
       incidentProvider = IncidentProvider(incidentRepo);
       adminProvider = AdminProvider();
+      fcmService = FcmNotificationService();
+      notificationRepo = NotificationRepository();
+      notificationProvider = NotificationProvider(notificationRepo, fcmService);
     });
 
     // ------------------------------------------------------------------------
@@ -520,6 +531,190 @@ void main() {
       await tester.pump();
       expect(find.byType(LiveCameraPlayerWidget), findsOneWidget);
       expect(find.text(cam.name), findsOneWidget);
+    });
+
+    // ------------------------------------------------------------------------
+    // Phase 9: Notification System & FCM Push Alerts Tests
+    // ------------------------------------------------------------------------
+    test('27. Phase 9: FCM device push token registration & permission handling', () async {
+      final user = MockDataService.demoUsers.first;
+      expect(notificationProvider.hasPermission, isFalse);
+      expect(notificationProvider.deviceToken, isNull);
+
+      await notificationProvider.initialize(user);
+
+      expect(notificationProvider.hasPermission, isTrue);
+      expect(notificationProvider.deviceToken, isNotNull);
+      expect(notificationProvider.deviceToken!.startsWith('fcm_'), isTrue);
+      expect(notificationProvider.notifications.isNotEmpty, isTrue);
+    });
+
+    test('28. Phase 9: Role-based notification targeting & isolation', () async {
+      final branchSecUser = MockDataService.demoUsers.firstWhere((u) => u.role == UserRole.branchSecurity);
+      final brandMgrUser = MockDataService.demoUsers.firstWhere((u) => u.role == UserRole.brandManager);
+      final adminUser = MockDataService.demoUsers.firstWhere((u) => u.role == UserRole.superAdmin);
+
+      // Assigned branch incident for branchSecUser
+      final branchIncidentAlert = NotificationItem(
+        id: 'notif_rbac_assigned_branch',
+        recipientId: branchSecUser.id,
+        incidentId: 'inc_branch_01',
+        title: 'CRITICAL: Cashier Area Empty',
+        body: 'Cashier 01 unattended',
+        sentAt: DateTime.now(),
+        deliveryStatus: 'delivered',
+        data: {
+          'severity': 'critical',
+          'branchId': branchSecUser.branchId ?? branchSecUser.authorizedBranchIds.first,
+          'brandId': brandMgrUser.brandId ?? 'assigned-brand',
+        },
+      );
+
+      // Other branch incident (not assigned to branchSecUser and not in brandMgrUser)
+      final otherIncidentAlert = NotificationItem(
+        id: 'notif_rbac_unauthorized',
+        recipientId: 'other_user',
+        incidentId: 'inc_other_01',
+        title: 'WARNING: Loitering Detected',
+        body: 'Fitting Room loitering',
+        sentAt: DateTime.now(),
+        deliveryStatus: 'delivered',
+        data: {
+          'severity': 'warning',
+          'branchId': 'unauthorized-branch-id-999',
+          'brandId': 'unauthorized-brand-id-999',
+        },
+      );
+
+      // Branch Security authorization check
+      final canBranchSecAccessAssigned = branchSecUser.authorizedBranchIds.contains(branchIncidentAlert.data['branchId']);
+      final canBranchSecAccessOther = branchSecUser.authorizedBranchIds.contains(otherIncidentAlert.data['branchId']);
+      expect(canBranchSecAccessAssigned, isTrue);
+      expect(canBranchSecAccessOther, isFalse);
+
+      // Brand Manager authorization check
+      final canBrandMgrAccessAssigned = brandMgrUser.brandId == branchIncidentAlert.data['brandId'];
+      final canBrandMgrAccessOther = brandMgrUser.brandId == otherIncidentAlert.data['brandId'];
+      expect(canBrandMgrAccessAssigned, isTrue);
+      expect(canBrandMgrAccessOther, isFalse);
+
+      // Super Admin has global access
+      expect(adminUser.isSuperAdmin, isTrue);
+    });
+
+    test('29. Phase 9: Notification preferences toggling (critical, warning, camera offline, AI events)', () async {
+      final user = MockDataService.demoUsers.first;
+      await notificationProvider.initialize(user);
+
+      expect(notificationProvider.preferences.criticalAlerts, isTrue);
+      expect(notificationProvider.preferences.cameraOffline, isTrue);
+
+      final updated = notificationProvider.preferences.copyWith(
+        warningAlerts: false,
+        aiEvents: false,
+        cameraOffline: true,
+      );
+
+      await notificationProvider.updatePreferences(user, updated);
+      expect(notificationProvider.preferences.warningAlerts, isFalse);
+      expect(notificationProvider.preferences.aiEvents, isFalse);
+      expect(notificationProvider.preferences.criticalAlerts, isTrue);
+      expect(notificationProvider.preferences.cameraOffline, isTrue);
+    });
+
+    test('30. Phase 9: Notification history tracking & unread count updates when receiving alerts and marking as read', () async {
+      final user = MockDataService.demoUsers.first;
+      await notificationProvider.initialize(user);
+
+      final initialUnread = notificationProvider.unreadCount;
+      final initialTotal = notificationProvider.notifications.length;
+
+      // Simulate incoming real-time FCM notification dispatch
+      final incoming = NotificationItem(
+        id: 'notif_realtime_test',
+        recipientId: user.id,
+        incidentId: 'inc_cashier_realtime',
+        title: 'CRITICAL: Cashier Area Empty',
+        body: 'Armani Exchange • Mall of Arabia • Cashier 01: Cashier area empty for 3 minutes.',
+        sentAt: DateTime.now(),
+        deliveryStatus: 'delivered',
+        data: {'route': '/incidents?id=inc_cashier_realtime'},
+      );
+
+      fcmService.dispatchForegroundNotification(incoming);
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      expect(notificationProvider.notifications.length, equals(initialTotal + 1));
+      expect(notificationProvider.unreadCount, equals(initialUnread + 1));
+      expect(notificationProvider.latestForegroundNotification?.id, equals('notif_realtime_test'));
+
+      // Mark incoming notification as read
+      await notificationProvider.markAsRead(user, 'notif_realtime_test');
+      expect(notificationProvider.unreadCount, equals(initialUnread));
+      expect(notificationProvider.notifications.firstWhere((n) => n.id == 'notif_realtime_test').isRead, isTrue);
+
+      // Dismiss foreground banner
+      notificationProvider.dismissForegroundBanner();
+      expect(notificationProvider.latestForegroundNotification, isNull);
+    });
+
+    test('31. Phase 9: Mark all as read resets unread count to 0', () async {
+      final user = MockDataService.demoUsers.first;
+      await notificationProvider.initialize(user);
+
+      expect(notificationProvider.unreadCount, greaterThan(0));
+
+      await notificationProvider.markAllAsRead(user);
+      expect(notificationProvider.unreadCount, equals(0));
+      expect(notificationProvider.notifications.every((n) => n.isRead), isTrue);
+    });
+
+    testWidgets('32. Phase 9: NotificationBellWidget renders unread badge and opens alerts panel', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final user = MockDataService.demoUsers.first;
+      await authProvider.login('admin@lensiq.cloud', 'password123');
+      await notificationProvider.initialize(user);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+            ChangeNotifierProvider<NotificationProvider>.value(value: notificationProvider),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              appBar: PreferredSize(
+                preferredSize: Size.fromHeight(56),
+                child: Row(
+                  children: [
+                    NotificationBellWidget(),
+                  ],
+                ),
+              ),
+              body: SizedBox(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NotificationBellWidget), findsOneWidget);
+      expect(find.byIcon(Icons.notifications_outlined), findsOneWidget);
+      expect(notificationProvider.unreadCount, greaterThan(0));
+      expect(find.text('${notificationProvider.unreadCount}'), findsOneWidget);
+
+      // Tap bell to open dialog panel
+      await tester.tap(find.byType(IconButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Alerts & Notifications'), findsOneWidget);
     });
   });
 }

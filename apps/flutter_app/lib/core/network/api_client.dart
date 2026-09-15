@@ -105,6 +105,60 @@ class ApiClient {
     }
   }
 
+  Future<ApiResponse<T>> put<T>(
+    String path, {
+    Map<String, dynamic>? body,
+    UserProfile? user,
+    String? token,
+    T Function(dynamic json)? fromJson,
+  }) async {
+    try {
+      final uri = Uri.parse('${AppConfig.backendBaseUrl}$path');
+      final response = await _httpClient
+          .put(
+            uri,
+            headers: _buildHeaders(user: user, token: token),
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(const Duration(seconds: 4));
+
+      return _handleResponse(response, fromJson);
+    } catch (e) {
+      return ApiResponse<T>(
+        success: false,
+        error: 'Network connection failed: $e',
+        statusCode: 0,
+      );
+    }
+  }
+
+  Future<ApiResponse<T>> patch<T>(
+    String path, {
+    Map<String, dynamic>? body,
+    UserProfile? user,
+    String? token,
+    T Function(dynamic json)? fromJson,
+  }) async {
+    try {
+      final uri = Uri.parse('${AppConfig.backendBaseUrl}$path');
+      final response = await _httpClient
+          .patch(
+            uri,
+            headers: _buildHeaders(user: user, token: token),
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(const Duration(seconds: 4));
+
+      return _handleResponse(response, fromJson);
+    } catch (e) {
+      return ApiResponse<T>(
+        success: false,
+        error: 'Network connection failed: $e',
+        statusCode: 0,
+      );
+    }
+  }
+
   ApiResponse<T> _handleResponse<T>(http.Response response, T Function(dynamic json)? fromJson) {
     try {
       final decoded = jsonDecode(response.body);

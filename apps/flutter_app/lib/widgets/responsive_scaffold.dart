@@ -7,6 +7,8 @@ import '../core/utils/responsive_util.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import 'enterprise_sidebar.dart';
+import 'notification_bell_widget.dart';
+import 'foreground_notification_banner.dart';
 
 class ResponsiveScaffold extends StatelessWidget {
   final Widget child;
@@ -53,6 +55,8 @@ class ResponsiveScaffold extends StatelessWidget {
                         Text(title, style: AppTypography.h2),
                         const Spacer(),
                         ...?actions,
+                        const NotificationBellWidget(),
+                        const SizedBox(width: 4),
                         IconButton(
                           icon: Icon(
                             themeProvider.isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
@@ -65,7 +69,14 @@ class ResponsiveScaffold extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Expanded(child: child),
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        child,
+                        const ForegroundNotificationBanner(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -85,6 +96,7 @@ class ResponsiveScaffold extends StatelessWidget {
         title: Text(title, style: AppTypography.h3),
         actions: [
           ...?actions,
+          const NotificationBellWidget(),
           IconButton(
             icon: Icon(
               themeProvider.isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
@@ -99,7 +111,12 @@ class ResponsiveScaffold extends StatelessWidget {
           ),
         ],
       ),
-      body: child,
+      body: Stack(
+        children: [
+          child,
+          const ForegroundNotificationBanner(),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
         onDestinationSelected: (idx) {

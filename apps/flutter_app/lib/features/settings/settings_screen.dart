@@ -7,6 +7,9 @@ import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/responsive_scaffold.dart';
 import '../../widgets/loading_view.dart';
+import '../../widgets/notification_preferences_dialog.dart';
+import '../../models/notification_item.dart';
+import '../../providers/notification_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -235,7 +238,113 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // 4. Theme & Preferences
+                // 4. Real-time Notifications & FCM
+                Consumer<NotificationProvider>(
+                  builder: (context, notifProv, child) {
+                    final prefs = notifProv.preferences;
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.notifications_active_outlined, color: AppColors.primaryLight, size: 22),
+                                const SizedBox(width: 10),
+                                const Text('Push Notifications & FCM Alerts', style: AppTypography.h3),
+                                const Spacer(),
+                                OutlinedButton.icon(
+                                  onPressed: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (_) => const NotificationPreferencesDialog(),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.tune, size: 14),
+                                  label: const Text('Configure Rules'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              'Manage Firebase Cloud Messaging tokens and threshold criteria for security push notifications.',
+                              style: AppTypography.bodySecondary,
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.verified, size: 16, color: AppColors.success),
+                                      const SizedBox(width: 8),
+                                      const Text('FCM Device Token Status:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                                      const Spacer(),
+                                      Text(
+                                        notifProv.deviceToken != null ? 'Active & Registered' : 'Pending Registration',
+                                        style: TextStyle(
+                                          color: notifProv.deviceToken != null ? AppColors.success : AppColors.warning,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const Divider(height: 16, color: Colors.white12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 6,
+                                    children: [
+                                      _StatusPill(label: 'Critical', isEnabled: prefs.criticalAlerts, color: AppColors.error),
+                                      _StatusPill(label: 'Warnings', isEnabled: prefs.warningAlerts, color: AppColors.warning),
+                                      _StatusPill(label: 'Info', isEnabled: prefs.infoAlerts, color: AppColors.info),
+                                      _StatusPill(label: 'Camera Offline', isEnabled: prefs.cameraOffline, color: AppColors.warning),
+                                      _StatusPill(label: 'AI Events', isEnabled: prefs.aiEvents, color: AppColors.primary),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: () {
+                                  final testNotif = NotificationItem(
+                                    id: 'notif_test_${DateTime.now().millisecondsSinceEpoch}',
+                                    recipientId: user.id,
+                                    incidentId: 'inc_cashier_test',
+                                    title: 'CRITICAL: Cashier Area Empty',
+                                    body: '${user.brandName ?? "Armani Exchange"} • ${user.branchName ?? "Mall of Arabia"} • Cashier 01: Unattended for 3 continuous minutes.',
+                                    sentAt: DateTime.now(),
+                                    deliveryStatus: 'delivered',
+                                    data: {
+                                      'severity': 'critical',
+                                      'incidentId': 'inc_cashier_test',
+                                      'route': '/incidents',
+                                    },
+                                  );
+                                  notifProv.addIncomingNotification(testNotif);
+                                },
+                                icon: const Icon(Icons.send_outlined, size: 14),
+                                label: const Text('Simulate In-App Push Alert', style: TextStyle(fontSize: 12)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                // 5. Theme & Preferences
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -291,6 +400,55 @@ class _SettingItem extends StatelessWidget {
         children: [
           Text(label, style: AppTypography.bodySecondary),
           Text(value, style: AppTypography.bodyMedium),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  final String label;
+  final bool isEnabled;
+  final Color color;
+
+  const _StatusPill({
+    required this.label,
+    required this.isEnabled,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isEnabled ? color.withOpacity(0.15) : Colors.white10,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: isEnabled ? color.withOpacity(0.6) : Colors.white24,
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: isEnabled ? color : Colors.white30,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: isEnabled ? Colors.white : Colors.white54,
+              fontSize: 10,
+              fontWeight: isEnabled ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
         ],
       ),
     );

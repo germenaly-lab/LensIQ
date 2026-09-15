@@ -8,10 +8,13 @@ import 'services/auth_service.dart';
 import 'repositories/auth_repository.dart';
 import 'repositories/camera_repository.dart';
 import 'repositories/incident_repository.dart';
+import 'repositories/notification_repository.dart';
+import 'services/fcm_notification_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/camera_provider.dart';
 import 'providers/incident_provider.dart';
 import 'providers/admin_provider.dart';
+import 'providers/notification_provider.dart';
 import 'providers/theme_provider.dart';
 import 'routing/app_router.dart';
 
@@ -27,10 +30,12 @@ void main() async {
   // 3. Instantiate core services and repositories
   final apiClient = ApiClient();
   final authService = AuthService(prefs);
+  final fcmService = FcmNotificationService();
 
   final authRepo = AuthRepository(authService);
   final cameraRepo = CameraRepository(apiClient: apiClient);
   final incidentRepo = IncidentRepository();
+  final notificationRepo = NotificationRepository(apiClient: apiClient);
 
   runApp(
     MultiProvider(
@@ -40,6 +45,9 @@ void main() async {
         ChangeNotifierProvider(create: (_) => CameraProvider(cameraRepo)),
         ChangeNotifierProvider(create: (_) => IncidentProvider(incidentRepo)),
         ChangeNotifierProvider(create: (_) => AdminProvider()),
+        ChangeNotifierProvider(
+          create: (_) => NotificationProvider(notificationRepo, fcmService),
+        ),
       ],
       child: const LensIQApp(),
     ),

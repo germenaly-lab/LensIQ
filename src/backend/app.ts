@@ -4,14 +4,18 @@ import { CameraService } from './services/camera.service';
 import { StreamingGatewayService } from './services/streaming-gateway.service';
 import { CameraController } from './controllers/camera.controller';
 import { StreamController } from './controllers/stream.controller';
+import { NotificationController } from './controllers/notification.controller';
+import { NotificationService } from './services/notification.service';
 import { createCameraRoutes } from './routes/camera.routes';
 import { createStreamRoutes } from './routes/stream.routes';
+import { createNotificationRoutes } from './routes/notification.routes';
 import { createInternalRoutes } from './routes/internal.routes';
 import { authMiddleware } from './middleware/auth.middleware';
 
 export function createApp(
   customCameraService?: CameraService,
-  customGatewayService?: StreamingGatewayService
+  customGatewayService?: StreamingGatewayService,
+  customNotificationService?: NotificationService
 ): Express {
   const app = express();
 
@@ -22,9 +26,11 @@ export function createApp(
   // Services & Controllers
   const cameraService = customCameraService || new CameraService();
   const gatewayService = customGatewayService || new StreamingGatewayService(cameraService);
+  const notificationService = customNotificationService || new NotificationService();
 
   const cameraController = new CameraController(cameraService);
   const streamController = new StreamController(gatewayService);
+  const notificationController = new NotificationController(notificationService);
 
   // Health check
   app.get('/api/v1/health', (req: Request, res: Response) => {
@@ -40,6 +46,7 @@ export function createApp(
   // Protected Routes
   app.use('/api/v1/cameras', authMiddleware, createCameraRoutes(cameraController));
   app.use('/api/v1/streams', authMiddleware, createStreamRoutes(streamController));
+  app.use('/api/v1/notifications', authMiddleware, createNotificationRoutes(notificationController));
   app.use('/api/v1/internal', createInternalRoutes());
 
   // 404 Handler
