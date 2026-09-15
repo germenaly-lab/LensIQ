@@ -15,11 +15,40 @@ class CameraProvider extends ChangeNotifier {
   StreamSessionModel? _activeSession;
   bool _isStreamingLoading = false;
 
+  // Health section filters
+  String? _healthBrandFilter;
+  String? _healthBranchFilter;
+  CameraStatus? _healthStatusFilter;
+
   CameraProvider(this._repository);
+
+  List<CameraModel> get allCameras => _cameras;
 
   List<CameraModel> get cameras {
     if (_filterSource == null) return _cameras;
     return _cameras.where((c) => c.sourceType == _filterSource).toList();
+  }
+
+  // Filtered cameras for Camera Health section
+  List<CameraModel> get healthFilteredCameras {
+    return _cameras.where((cam) {
+      if (_healthBrandFilter != null) {
+        final bName = cam.brandName ?? '';
+        if (!bName.toLowerCase().contains(_healthBrandFilter!.toLowerCase())) {
+          return false;
+        }
+      }
+      if (_healthBranchFilter != null) {
+        final brName = cam.branchName ?? '';
+        if (!brName.toLowerCase().contains(_healthBranchFilter!.toLowerCase())) {
+          return false;
+        }
+      }
+      if (_healthStatusFilter != null && cam.status != _healthStatusFilter) {
+        return false;
+      }
+      return true;
+    }).toList();
   }
 
   CameraSourceType? get filterSource => _filterSource;
@@ -29,13 +58,48 @@ class CameraProvider extends ChangeNotifier {
   StreamSessionModel? get activeSession => _activeSession;
   bool get isStreamingLoading => _isStreamingLoading;
 
+  String? get healthBrandFilter => _healthBrandFilter;
+  String? get healthBranchFilter => _healthBranchFilter;
+  CameraStatus? get healthStatusFilter => _healthStatusFilter;
+
   int get totalCamerasCount => _cameras.length;
   int get rtspCamerasCount => _cameras.where((c) => c.isRtsp).length;
   int get hikvisionCamerasCount => _cameras.where((c) => c.isHikvision).length;
-  int get onlineCount => _cameras.where((c) => c.isOnline).length;
+
+  int get onlineCount => _cameras.where((c) => c.status == CameraStatus.online).length;
+  int get offlineCount => _cameras.where((c) => c.status == CameraStatus.offline).length;
+  int get warningCount => _cameras.where((c) => c.status == CameraStatus.warning).length;
+  int get unknownCount => _cameras.where((c) => c.status == CameraStatus.unknown).length;
+
+  double get availabilityPercentage {
+    if (_cameras.isEmpty) return 100.0;
+    return double.parse(((onlineCount / _cameras.length) * 100).toStringAsFixed(1));
+  }
 
   void setFilterSource(CameraSourceType? type) {
     _filterSource = type;
+    notifyListeners();
+  }
+
+  void setHealthBrandFilter(String? brand) {
+    _healthBrandFilter = brand;
+    notifyListeners();
+  }
+
+  void setHealthBranchFilter(String? branch) {
+    _healthBranchFilter = branch;
+    notifyListeners();
+  }
+
+  void setHealthStatusFilter(CameraStatus? status) {
+    _healthStatusFilter = status;
+    notifyListeners();
+  }
+
+  void clearHealthFilters() {
+    _healthBrandFilter = null;
+    _healthBranchFilter = null;
+    _healthStatusFilter = null;
     notifyListeners();
   }
 
@@ -81,7 +145,6 @@ class CameraProvider extends ChangeNotifier {
   }
 
   Future<void> addCamera(UserProfile user, CameraModel newCam) async {
-    // Optimistic UI update
     _cameras.insert(0, newCam);
     notifyListeners();
 
@@ -95,8 +158,23 @@ class CameraProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      // Keep optimistic entry or mark error
       _errorMessage = 'Warning: Camera saved locally ($e)';
+      notifyListeners();
+    }
+  }
+
+  void updateCamera(CameraModel updated) {
+    final idx = _cameras.indexWhere((c) => c.id == updated.id);
+    if (idx != -1) {
+      _cameras[idx] = updated;
+      notifyListeners();
+    }
+  }
+
+  void toggleCameraEnabled(String cameraId) {
+    final idx = _cameras.indexWhere((c) => c.id == cameraId);
+    if (idx != -1) {
+      _cameras[idx] = _cameras[idx].copyWith(enabled: !_cameras[idx].enabled);
       notifyListeners();
     }
   }

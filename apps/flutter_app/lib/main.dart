@@ -11,6 +11,7 @@ import 'repositories/incident_repository.dart';
 import 'providers/auth_provider.dart';
 import 'providers/camera_provider.dart';
 import 'providers/incident_provider.dart';
+import 'providers/admin_provider.dart';
 import 'providers/theme_provider.dart';
 import 'routing/app_router.dart';
 
@@ -38,6 +39,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider(authRepo)),
         ChangeNotifierProvider(create: (_) => CameraProvider(cameraRepo)),
         ChangeNotifierProvider(create: (_) => IncidentProvider(incidentRepo)),
+        ChangeNotifierProvider(create: (_) => AdminProvider()),
       ],
       child: const LensIQApp(),
     ),

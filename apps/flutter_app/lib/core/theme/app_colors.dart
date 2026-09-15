@@ -23,6 +23,7 @@ class AppColors {
   static const Color primaryDark = Color(0xFF4F46E5);     // Indigo 600
   static const Color primaryLight = Color(0xFF818CF8);    // Indigo 400
   static const Color secondary = Color(0xFF0EA5E9);       // Sky 500
+  static const Color accent = Color(0xFF8B5CF6);          // Violet / Purple 500
 
   // Status & Severity Indicators
   static const Color success = Color(0xFF10B981);         // Emerald 500 (Online / Healthy)

@@ -36,22 +36,58 @@ class EnterpriseSidebar extends StatelessWidget {
 
   static const List<NavItem> navItems = [
     NavItem(
-      title: 'Operations Dashboard',
+      title: 'Dashboard',
       icon: Icons.dashboard_outlined,
       route: '/dashboard',
     ),
     NavItem(
-      title: 'Multi-Source Cameras',
+      title: 'Companies',
+      icon: Icons.corporate_fare_outlined,
+      route: '/companies',
+      allowedRoles: [UserRole.superAdmin],
+    ),
+    NavItem(
+      title: 'Brands',
+      icon: Icons.store_mall_directory_outlined,
+      route: '/brands',
+      allowedRoles: [UserRole.superAdmin, UserRole.brandManager],
+    ),
+    NavItem(
+      title: 'Branches',
+      icon: Icons.storefront_outlined,
+      route: '/branches',
+      allowedRoles: [UserRole.superAdmin, UserRole.brandManager],
+    ),
+    NavItem(
+      title: 'Cameras',
       icon: Icons.videocam_outlined,
       route: '/cameras',
     ),
     NavItem(
-      title: 'AI Vision Incidents',
+      title: 'AI Rules',
+      icon: Icons.tune_outlined,
+      route: '/rules',
+      allowedRoles: [UserRole.superAdmin, UserRole.brandManager],
+    ),
+    NavItem(
+      title: 'Incidents',
       icon: Icons.notifications_active_outlined,
       route: '/incidents',
     ),
     NavItem(
-      title: 'System Settings',
+      title: 'Users',
+      icon: Icons.people_outline,
+      route: '/users',
+      allowedRoles: [UserRole.superAdmin],
+    ),
+    NavItem(
+      title: 'Audit Logs',
+      icon: Icons.history_edu_outlined,
+      route: '/audit-logs',
+      allowedRoles: [UserRole.superAdmin],
+    ),
+    NavItem(
+      title: 'Settings',
       icon: Icons.settings_outlined,
       route: '/settings',
     ),

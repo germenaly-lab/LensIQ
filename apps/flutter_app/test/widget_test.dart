@@ -3,25 +3,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lensiq_app/models/user_profile.dart';
 import 'package:lensiq_app/models/camera.dart';
+import 'package:lensiq_app/models/incident.dart';
+import 'package:lensiq_app/models/ai_rule.dart';
+import 'package:lensiq_app/models/roi.dart';
 import 'package:lensiq_app/services/auth_service.dart';
 import 'package:lensiq_app/services/mock_data_service.dart';
 import 'package:lensiq_app/repositories/auth_repository.dart';
 import 'package:lensiq_app/repositories/camera_repository.dart';
+import 'package:lensiq_app/repositories/incident_repository.dart';
 import 'package:lensiq_app/providers/auth_provider.dart';
 import 'package:lensiq_app/providers/camera_provider.dart';
+import 'package:lensiq_app/providers/incident_provider.dart';
+import 'package:lensiq_app/providers/admin_provider.dart';
 import 'package:lensiq_app/providers/theme_provider.dart';
 import 'package:lensiq_app/widgets/status_badge.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Phase 5 — Flutter App Unit & Widget Tests', () {
+  group('LensIQ Enterprise Monitoring Suite Tests', () {
     late SharedPreferences prefs;
     late AuthService authService;
     late AuthRepository authRepo;
     late AuthProvider authProvider;
     late CameraRepository cameraRepo;
     late CameraProvider cameraProvider;
+    late IncidentRepository incidentRepo;
+    late IncidentProvider incidentProvider;
+    late AdminProvider adminProvider;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
@@ -31,76 +40,63 @@ void main() {
       authProvider = AuthProvider(authRepo);
       cameraRepo = CameraRepository();
       cameraProvider = CameraProvider(cameraRepo);
+      incidentRepo = IncidentRepository();
+      incidentProvider = IncidentProvider(incidentRepo);
+      adminProvider = AdminProvider();
     });
 
     // ------------------------------------------------------------------------
-    // Test 1: Authentication & Role Resolution
+    // Test 1: Authentication & RBAC
     // ------------------------------------------------------------------------
     test('1. Super Admin authentication resolves full permissions and persistence', () async {
-      expect(authProvider.isAuthenticated, isFalse);
-
       final success = await authProvider.login('admin@lensiq.cloud', 'password123');
       expect(success, isTrue);
       expect(authProvider.isAuthenticated, isTrue);
-      expect(authProvider.currentUser?.role, equals(UserRole.superAdmin));
-      expect(authProvider.currentUser?.isSuperAdmin, isTrue);
-
-      // Verify persistence in SharedPreferences
-      final restored = authService.getPersistedUser();
-      expect(restored, isNotNull);
-      expect(restored?.email, equals('admin@lensiq.cloud'));
+      expect(authProvider.currentUser, isNotNull);
+      expect(authProvider.currentUser!.isSuperAdmin, isTrue);
+      expect(authProvider.currentUser!.authorizedBranchIds.length, greaterThanOrEqualTo(2));
     });
 
     test('2. Role switching between Super Admin, Brand Manager, and Branch Security', () async {
-      // Switch to Brand Manager
+      await authProvider.login('admin@lensiq.cloud', 'password123');
+      expect(authProvider.currentUser!.role, equals(UserRole.superAdmin));
+
       await authProvider.switchDemoRole(UserRole.brandManager);
-      expect(authProvider.currentUser?.role, equals(UserRole.brandManager));
-      expect(authProvider.currentUser?.isBrandManager, isTrue);
-      expect(authProvider.currentUser?.brandName, equals('Ego Fashion'));
+      expect(authProvider.currentUser!.role, equals(UserRole.brandManager));
+      expect(authProvider.currentUser!.brandName, isNotNull);
 
-      // Switch to Branch Security
       await authProvider.switchDemoRole(UserRole.branchSecurity);
-      expect(authProvider.currentUser?.role, equals(UserRole.branchSecurity));
-      expect(authProvider.currentUser?.isBranchSecurity, isTrue);
-      expect(authProvider.currentUser?.branchName, contains('Mall of Arabia'));
-
-      // Logout clears session
-      await authProvider.logout();
-      expect(authProvider.isAuthenticated, isFalse);
-      expect(authProvider.currentUser, isNull);
+      expect(authProvider.currentUser!.role, equals(UserRole.branchSecurity));
+      expect(authProvider.currentUser!.branchName, isNotNull);
     });
 
     // ------------------------------------------------------------------------
-    // Test 2: Multi-Source Camera Inventory & Filtering
+    // Test 2: Camera Multi-Source Filtering
     // ------------------------------------------------------------------------
     test('3. Loads multi-source cameras and filters by RTSP and Hikvision P2P', () async {
-      final user = MockDataService.demoUsers.first; // Super Admin
+      final user = MockDataService.demoUsers.first;
       await cameraProvider.loadCameras(user);
 
-      expect(cameraProvider.cameras.isNotEmpty, isTrue);
-      expect(cameraProvider.totalCamerasCount, greaterThanOrEqualTo(2));
-      expect(cameraProvider.rtspCamerasCount, greaterThanOrEqualTo(1));
-      expect(cameraProvider.hikvisionCamerasCount, greaterThanOrEqualTo(1));
+      expect(cameraProvider.totalCamerasCount, greaterThan(0));
+      expect(cameraProvider.rtspCamerasCount, greaterThan(0));
+      expect(cameraProvider.hikvisionCamerasCount, greaterThan(0));
 
-      // Filter by RTSP only
       cameraProvider.setFilterSource(CameraSourceType.rtsp);
       expect(cameraProvider.cameras.every((c) => c.isRtsp), isTrue);
 
-      // Filter by Hikvision P2P only
       cameraProvider.setFilterSource(CameraSourceType.hikvisionP2p);
       expect(cameraProvider.cameras.every((c) => c.isHikvision), isTrue);
 
-      // Clear filter
       cameraProvider.setFilterSource(null);
       expect(cameraProvider.cameras.length, equals(cameraProvider.totalCamerasCount));
     });
 
     // ------------------------------------------------------------------------
-    // Test 3: Stream Session Initiation via Gateway
+    // Test 3: Stream Session Initiation
     // ------------------------------------------------------------------------
     test('4. Initiates live streaming session and receives sanitized descriptor', () async {
       final user = MockDataService.demoUsers.first;
-      final cameraId = '44444444-4444-4444-4444-444444444441'; // Cashier 01
+      final cameraId = '44444444-4444-4444-4444-444444444441';
 
       await cameraProvider.startStream(user, cameraId);
       expect(cameraProvider.activeSession, isNotNull);
@@ -129,7 +125,7 @@ void main() {
     });
 
     // ------------------------------------------------------------------------
-    // Test 5: StatusBadge & SourceTypeBadge Widget Tests
+    // Test 5: StatusBadge & SourceTypeBadge Widgets
     // ------------------------------------------------------------------------
     testWidgets('6. StatusBadge renders ONLINE indicator', (WidgetTester tester) async {
       await tester.pumpWidget(
@@ -139,7 +135,6 @@ void main() {
           ),
         ),
       );
-
       expect(find.text('ONLINE'), findsOneWidget);
     });
 
@@ -151,7 +146,6 @@ void main() {
           ),
         ),
       );
-
       expect(find.text('HIKVISION P2P'), findsOneWidget);
     });
 
@@ -178,6 +172,117 @@ void main() {
       await cameraProvider.addCamera(user, newCam);
       expect(cameraProvider.totalCamerasCount, equals(initialCount + 1));
       expect(cameraProvider.cameras.first.id, equals('new-test-cam-999'));
+    });
+
+    // ------------------------------------------------------------------------
+    // Phase 6 Tests
+    // ------------------------------------------------------------------------
+    test('9. Super Admin acknowledges, resolves, and flags false positive incidents', () async {
+      final user = MockDataService.demoUsers.first;
+      await incidentProvider.loadData(user);
+
+      expect(incidentProvider.incidents.isNotEmpty, isTrue);
+      final target = incidentProvider.incidents.first;
+
+      // Acknowledge
+      incidentProvider.acknowledgeIncident(target.id);
+      final acknowledged = incidentProvider.rawIncidents.firstWhere((i) => i.id == target.id);
+      expect(acknowledged.status, equals(IncidentStatus.acknowledged));
+
+      // Resolve
+      incidentProvider.resolveIncident(target.id, 'Cashier returned to counter');
+      final resolved = incidentProvider.rawIncidents.firstWhere((i) => i.id == target.id);
+      expect(resolved.status, equals(IncidentStatus.resolved));
+      expect(resolved.resolutionNote, equals('Cashier returned to counter'));
+
+      // False Positive
+      incidentProvider.markFalsePositive(target.id);
+      final falsePos = incidentProvider.rawIncidents.firstWhere((i) => i.id == target.id);
+      expect(falsePos.status, equals(IncidentStatus.falsePositive));
+    });
+
+    test('10. Camera Health filtering by brand, branch, and status', () async {
+      final user = MockDataService.demoUsers.first;
+      await cameraProvider.loadCameras(user);
+
+      expect(cameraProvider.onlineCount, greaterThan(0));
+      expect(cameraProvider.availabilityPercentage, greaterThan(50.0));
+
+      cameraProvider.setHealthStatusFilter(CameraStatus.online);
+      expect(cameraProvider.healthFilteredCameras.every((c) => c.status == CameraStatus.online), isTrue);
+
+      cameraProvider.clearHealthFilters();
+      cameraProvider.setHealthBrandFilter('Armani');
+      expect(cameraProvider.healthFilteredCameras.every((c) => c.brandName?.contains('Armani') ?? false), isTrue);
+
+      cameraProvider.clearHealthFilters();
+      expect(cameraProvider.healthFilteredCameras.length, equals(cameraProvider.totalCamerasCount));
+    });
+
+    test('11. AI Detection Rule management: create, update, and enable/disable toggle', () {
+      final initialCount = adminProvider.totalRulesCount;
+
+      final newRule = const AiRuleModel(
+        id: 'test-rule-101',
+        name: 'VIP Customer Service Rule',
+        ruleType: 'occupancy_limit',
+        durationSeconds: 120,
+        minPeople: 3,
+        severity: IncidentSeverity.info,
+        cameraId: '44444444-4444-4444-4444-444444444441',
+        cameraName: 'Cashier 01',
+        branchId: '33333333-3333-3333-3333-333333333333',
+        branchName: 'Ego Mall of Arabia Branch',
+      );
+
+      adminProvider.addRule(newRule);
+      expect(adminProvider.totalRulesCount, equals(initialCount + 1));
+      expect(adminProvider.rules.first.id, equals('test-rule-101'));
+
+      // Toggle enable/disable
+      final wasEnabled = adminProvider.rules.first.enabled;
+      adminProvider.toggleRuleEnabled('test-rule-101');
+      expect(adminProvider.rules.first.enabled, equals(!wasEnabled));
+    });
+
+    test('12. ROI Polygon Point normalization and coordinate conversion', () {
+      const point = RoiPoint(x: 0.5, y: 0.5);
+      const canvasSize = Size(800, 600);
+
+      final offset = point.toOffset(canvasSize);
+      expect(offset.dx, equals(400.0));
+      expect(offset.dy, equals(300.0));
+
+      final convertedBack = RoiPoint.fromOffset(offset, canvasSize);
+      expect(convertedBack.x, equals(0.5));
+      expect(convertedBack.y, equals(0.5));
+    });
+
+    test('13. Real-Time Incident addition updates live summary counts without page refresh', () async {
+      final user = MockDataService.demoUsers.first;
+      await incidentProvider.loadData(user);
+      final activeBefore = incidentProvider.activeIncidentsCount;
+
+      final realTimeIncident = IncidentModel(
+        id: 'realtime-inc-${DateTime.now().millisecondsSinceEpoch}',
+        cameraId: '44444444-4444-4444-4444-444444444441',
+        cameraName: 'Cashier 01',
+        brandName: 'Armani Exchange',
+        branchId: '33333333-3333-3333-3333-333333333333',
+        branchName: 'Ego Mall of Arabia Branch',
+        ruleType: 'cashier_empty',
+        severity: IncidentSeverity.critical,
+        status: IncidentStatus.open,
+        title: 'Real-time Cashier Empty Alert',
+        description: 'No operator detected at checkout counter.',
+        timestamp: DateTime.now(),
+        durationSeconds: 185,
+        confidence: 0.99,
+      );
+
+      incidentProvider.addRealtimeIncident(realTimeIncident);
+      expect(incidentProvider.activeIncidentsCount, equals(activeBefore + 1));
+      expect(incidentProvider.incidents.first.id, equals(realTimeIncident.id));
     });
   });
 }

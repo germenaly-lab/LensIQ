@@ -174,6 +174,16 @@ class _CameraListScreenState extends State<CameraListScreen> {
                             return _CameraCard(
                               camera: camera,
                               onWatch: () => context.go('/cameras/${camera.id}'),
+                              onEdit: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => _EditCameraDialog(
+                                    camera: camera,
+                                    onSave: (updated) => cameraProv.updateCamera(updated),
+                                  ),
+                                );
+                              },
+                              onToggleEnabled: () => cameraProv.toggleCameraEnabled(camera.id),
                             );
                           },
                         ),
@@ -230,8 +240,15 @@ class _FilterChip extends StatelessWidget {
 class _CameraCard extends StatelessWidget {
   final CameraModel camera;
   final VoidCallback onWatch;
+  final VoidCallback onEdit;
+  final VoidCallback onToggleEnabled;
 
-  const _CameraCard({required this.camera, required this.onWatch});
+  const _CameraCard({
+    required this.camera,
+    required this.onWatch,
+    required this.onEdit,
+    required this.onToggleEnabled,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -293,7 +310,30 @@ class _CameraCard extends StatelessWidget {
             Row(
               children: [
                 SourceTypeBadge(sourceType: camera.sourceType),
+                const SizedBox(width: 8),
+                Text(
+                  camera.enabled ? 'ENABLED' : 'DISABLED',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: camera.enabled ? AppColors.success : AppColors.textMuted,
+                  ),
+                ),
                 const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  tooltip: 'Edit Camera',
+                  onPressed: onEdit,
+                ),
+                IconButton(
+                  icon: Icon(
+                    camera.enabled ? Icons.visibility : Icons.visibility_off,
+                    size: 18,
+                    color: camera.enabled ? AppColors.primary : AppColors.textMuted,
+                  ),
+                  tooltip: camera.enabled ? 'Disable Camera' : 'Enable Camera',
+                  onPressed: onToggleEnabled,
+                ),
                 ElevatedButton.icon(
                   onPressed: onWatch,
                   icon: const Icon(Icons.play_circle_fill, size: 16),
@@ -302,6 +342,121 @@ class _CameraCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                     textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EditCameraDialog extends StatefulWidget {
+  final CameraModel camera;
+  final Function(CameraModel updated) onSave;
+
+  const _EditCameraDialog({required this.camera, required this.onSave});
+
+  @override
+  State<_EditCameraDialog> createState() => _EditCameraDialogState();
+}
+
+class _EditCameraDialogState extends State<_EditCameraDialog> {
+  late TextEditingController _nameController;
+  late TextEditingController _locationController;
+  late String _streamProfile;
+  late bool _enabled;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.camera.name);
+    _locationController = TextEditingController(text: widget.camera.locationDescription ?? '');
+    _streamProfile = widget.camera.streamProfile;
+    _enabled = widget.camera.enabled;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final updated = widget.camera.copyWith(
+      name: _nameController.text.trim(),
+      locationDescription: _locationController.text.trim(),
+      streamProfile: _streamProfile,
+      enabled: _enabled,
+    );
+    widget.onSave(updated);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 500),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Edit Camera Settings', style: AppTypography.h2),
+            const SizedBox(height: 6),
+            Text(
+              'Update surveillance parameters. Credentials remain securely stored in the Vault.',
+              style: AppTypography.caption,
+            ),
+            const Divider(height: 24),
+            TextField(
+              controller: _nameController,
+              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+              decoration: const InputDecoration(labelText: 'Camera Name'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _locationController,
+              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+              decoration: const InputDecoration(labelText: 'Zone / Location Description'),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _streamProfile,
+              dropdownColor: AppColors.surface,
+              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+              decoration: const InputDecoration(labelText: 'Stream Profile'),
+              items: const [
+                DropdownMenuItem(value: 'main', child: Text('Main Stream (1080p Full Quality)')),
+                DropdownMenuItem(value: 'sub', child: Text('Sub Stream (360p Low Bandwidth)')),
+              ],
+              onChanged: (val) => setState(() => _streamProfile = val ?? 'main'),
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Camera Enabled', style: AppTypography.bodyMedium),
+              subtitle: const Text('Active for AI computer vision ingest', style: AppTypography.caption),
+              value: _enabled,
+              onChanged: (val) => setState(() => _enabled = val),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: _submit,
+                  child: const Text('Save Changes'),
                 ),
               ],
             ),

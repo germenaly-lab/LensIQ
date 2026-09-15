@@ -25,15 +25,15 @@ class StatusBadge extends StatelessWidget {
         fg = AppColors.error;
         label = 'OFFLINE';
         break;
-      case CameraStatus.degraded:
+      case CameraStatus.warning:
         bg = AppColors.warning.withOpacity(0.15);
         fg = AppColors.warning;
-        label = 'DEGRADED';
+        label = 'WARNING';
         break;
-      case CameraStatus.provisioning:
+      case CameraStatus.unknown:
         bg = AppColors.info.withOpacity(0.15);
         fg = AppColors.info;
-        label = 'CONNECTING';
+        label = 'UNKNOWN';
         break;
     }
 
