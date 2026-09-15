@@ -206,6 +206,7 @@ class CameraProvider extends ChangeNotifier {
       final session = await _repository.startStreamSession(
         user,
         cameraId,
+        sourceType: knownCam?.sourceType,
         streamProfile: 'main',
         protocol: 'webrtc',
         demoMode: demoMode,

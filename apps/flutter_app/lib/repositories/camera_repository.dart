@@ -39,6 +39,7 @@ class CameraRepository {
   Future<StreamSessionModel> startStreamSession(
     UserProfile user,
     String cameraId, {
+    CameraSourceType? sourceType,
     String streamProfile = 'main',
     String protocol = 'webrtc',
     bool demoMode = true,
@@ -58,12 +59,16 @@ class CameraRepository {
       return response.data!;
     }
 
-    // Offline / Demo fallback
-    final camera = MockDataService.demoCameras.firstWhere(
-      (c) => c.id == cameraId,
-      orElse: () => MockDataService.demoCameras.first,
-    );
-    return MockDataService.createMockStreamSession(cameraId, camera.sourceType);
+    // Offline / Demo fallback: use passed sourceType or fallback to demoCameras lookup
+    final effectiveType = sourceType ??
+        MockDataService.demoCameras
+            .firstWhere(
+              (c) => c.id == cameraId,
+              orElse: () => MockDataService.demoCameras.first,
+            )
+            .sourceType;
+
+    return MockDataService.createMockStreamSession(cameraId, effectiveType);
   }
 
   /**

@@ -249,6 +249,34 @@ class _AddCameraDialogState extends State<AddCameraDialog> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  // Hikvision P2P Device Credentials
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _usernameController,
+                          style: TextStyle(color: colors.textPrimary, fontSize: 14),
+                          decoration: InputDecoration(
+                            labelText: context.tr('Camera Username'),
+                            hintText: 'admin',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          style: TextStyle(color: colors.textPrimary, fontSize: 14),
+                          decoration: InputDecoration(
+                            labelText: context.tr('Verification Code / Password'),
+                            hintText: 'e.g. ABCDEF or camera password',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
                 const SizedBox(height: 18),
 

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../config/app_config.dart';
 import '../../models/user_profile.dart';
@@ -62,6 +63,14 @@ class ApiClient {
     String? token,
     T Function(dynamic json)? fromJson,
   }) async {
+    if (kIsWeb && Uri.base.scheme == 'https' && AppConfig.backendBaseUrl.startsWith('http://localhost')) {
+      return ApiResponse<T>(
+        success: false,
+        error: 'Backend is running locally (HTTPS mixed content protection). Using client fallback.',
+        statusCode: 0,
+      );
+    }
+
     try {
       final uri = Uri.parse('${AppConfig.backendBaseUrl}$path');
       final response = await _httpClient
@@ -85,6 +94,14 @@ class ApiClient {
     String? token,
     T Function(dynamic json)? fromJson,
   }) async {
+    if (kIsWeb && Uri.base.scheme == 'https' && AppConfig.backendBaseUrl.startsWith('http://localhost')) {
+      return ApiResponse<T>(
+        success: false,
+        error: 'Backend is running locally (HTTPS mixed content protection). Using client fallback.',
+        statusCode: 0,
+      );
+    }
+
     try {
       final uri = Uri.parse('${AppConfig.backendBaseUrl}$path');
       final response = await _httpClient

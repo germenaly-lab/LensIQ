@@ -640,8 +640,9 @@ class MockDataService {
   static StreamSessionModel createMockStreamSession(String cameraId, CameraSourceType sourceType) {
     final isHik = sourceType == CameraSourceType.hikvisionP2p;
     final token = 'demo_token_${DateTime.now().millisecondsSinceEpoch}';
+    final safeSub = cameraId.length >= 8 ? cameraId.substring(0, 8) : cameraId;
     return StreamSessionModel(
-      sessionId: 'sess_${cameraId.substring(0, 8)}_${DateTime.now().millisecondsSinceEpoch}',
+      sessionId: 'sess_${safeSub}_${DateTime.now().millisecondsSinceEpoch}',
       cameraId: cameraId,
       sourceType: sourceType,
       streamUrl: isHik
