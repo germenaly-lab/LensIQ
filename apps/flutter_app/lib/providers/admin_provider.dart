@@ -148,7 +148,7 @@ class AdminProvider extends ChangeNotifier {
     _persistRules();
     _recordAudit(
       action: 'AI Rule created',
-      actorName: 'Alex Vance (Super Admin)',
+      actorName: 'Super Admin',
       actorRole: 'super_admin',
       details: 'Created rule "${rule.name}" for ${rule.cameraName} (${rule.ruleType}).',
       category: 'rule',
@@ -163,7 +163,7 @@ class AdminProvider extends ChangeNotifier {
       _persistRules();
       _recordAudit(
         action: 'AI Rule updated',
-        actorName: 'Alex Vance (Super Admin)',
+        actorName: 'Super Admin',
         actorRole: 'super_admin',
         details: 'Modified parameters for rule "${rule.name}" (duration: ${rule.durationSeconds}s).',
         category: 'rule',
@@ -180,7 +180,7 @@ class AdminProvider extends ChangeNotifier {
       _persistRules();
       _recordAudit(
         action: updated.enabled ? 'AI Rule enabled' : 'AI Rule disabled',
-        actorName: 'Alex Vance (Super Admin)',
+        actorName: 'Super Admin',
         actorRole: 'super_admin',
         details: 'Rule "${updated.name}" toggled to ${updated.enabled ? "ACTIVE" : "INACTIVE"}.',
         category: 'rule',
@@ -207,7 +207,7 @@ class AdminProvider extends ChangeNotifier {
     }
     _recordAudit(
       action: 'ROI modified',
-      actorName: 'Alex Vance (Super Admin)',
+      actorName: 'Super Admin',
       actorRole: 'super_admin',
       details: 'Region of Interest "${roi.name}" updated with ${roi.points.length} vertices.',
       category: 'roi',
@@ -221,7 +221,7 @@ class AdminProvider extends ChangeNotifier {
     _persistCompanies();
     _recordAudit(
       action: 'Company created',
-      actorName: 'Alex Vance (Super Admin)',
+      actorName: 'Super Admin',
       actorRole: 'super_admin',
       details: 'Created enterprise tenant "${company.name}" (Slug: ${company.slug}).',
       category: 'company',
@@ -236,7 +236,7 @@ class AdminProvider extends ChangeNotifier {
       _persistCompanies();
       _recordAudit(
         action: 'Company updated',
-        actorName: 'Alex Vance (Super Admin)',
+        actorName: 'Super Admin',
         actorRole: 'super_admin',
         details: 'Updated details for company "${company.name}".',
         category: 'company',
@@ -251,7 +251,7 @@ class AdminProvider extends ChangeNotifier {
     _persistCompanies();
     _recordAudit(
       action: 'Company deleted',
-      actorName: 'Alex Vance (Super Admin)',
+      actorName: 'Super Admin',
       actorRole: 'super_admin',
       details: 'Removed enterprise tenant "${company.name}".',
       category: 'company',
@@ -265,7 +265,7 @@ class AdminProvider extends ChangeNotifier {
     _persistBrands();
     _recordAudit(
       action: 'Brand created',
-      actorName: 'Alex Vance (Super Admin)',
+      actorName: 'Super Admin',
       actorRole: 'super_admin',
       details: 'Created brand "${brand.name}" under company "${brand.companyName}".',
       category: 'brand',
@@ -280,7 +280,7 @@ class AdminProvider extends ChangeNotifier {
       _persistBrands();
       _recordAudit(
         action: 'Brand updated',
-        actorName: 'Alex Vance (Super Admin)',
+        actorName: 'Super Admin',
         actorRole: 'super_admin',
         details: 'Updated details for brand "${brand.name}".',
         category: 'brand',
@@ -295,7 +295,7 @@ class AdminProvider extends ChangeNotifier {
     _persistBrands();
     _recordAudit(
       action: 'Brand deleted',
-      actorName: 'Alex Vance (Super Admin)',
+      actorName: 'Super Admin',
       actorRole: 'super_admin',
       details: 'Removed brand "${brand.name}".',
       category: 'brand',
@@ -309,7 +309,7 @@ class AdminProvider extends ChangeNotifier {
     _persistBranches();
     _recordAudit(
       action: 'Branch created',
-      actorName: 'Alex Vance (Super Admin)',
+      actorName: 'Super Admin',
       actorRole: 'super_admin',
       details: 'Created branch "${branch.name}" (Code: ${branch.code}).',
       category: 'branch',
@@ -324,7 +324,7 @@ class AdminProvider extends ChangeNotifier {
       _persistBranches();
       _recordAudit(
         action: 'Branch updated',
-        actorName: 'Alex Vance (Super Admin)',
+        actorName: 'Super Admin',
         actorRole: 'super_admin',
         details: 'Updated details for branch "${branch.name}" (Status: ${branch.status}).',
         category: 'branch',
@@ -339,7 +339,7 @@ class AdminProvider extends ChangeNotifier {
     _persistBranches();
     _recordAudit(
       action: 'Branch deleted',
-      actorName: 'Alex Vance (Super Admin)',
+      actorName: 'Super Admin',
       actorRole: 'super_admin',
       details: 'Removed branch "${branch.name}".',
       category: 'branch',

@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../models/user_profile.dart';
 import '../../widgets/responsive_scaffold.dart';
 import '../../widgets/loading_view.dart';
 import '../../widgets/notification_preferences_dialog.dart';
@@ -116,6 +117,110 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _showEditProfileDialog(BuildContext context, UserProfile user) {
+    final colors = context.colors;
+    final nameCtrl = TextEditingController(text: user.fullName);
+    final emailCtrl = TextEditingController(text: user.email);
+    bool isSaving = false;
+    String? localError;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: colors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: colors.border),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.edit_outlined, color: colors.primary, size: 20),
+              const SizedBox(width: 8),
+              Text(context.tr('Edit Profile'), style: AppTypography.h3Of(context)),
+            ],
+          ),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  style: TextStyle(color: colors.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: context.tr('Full Name'),
+                    prefixIcon: Icon(Icons.person_outline, size: 18, color: colors.textSecondary),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: emailCtrl,
+                  style: TextStyle(color: colors.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: context.tr('Email'),
+                    prefixIcon: Icon(Icons.email_outlined, size: 18, color: colors.textSecondary),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+                if (localError != null) ...[
+                  const SizedBox(height: 10),
+                  Text(localError!, style: TextStyle(color: colors.error, fontSize: 12)),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: Text(context.tr('Cancel'), style: TextStyle(color: colors.textSecondary)),
+            ),
+            ElevatedButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      final n = nameCtrl.text.trim();
+                      final e = emailCtrl.text.trim();
+                      if (n.isEmpty || e.isEmpty) {
+                        setDialogState(() => localError = context.tr('Please enter email and password'));
+                        return;
+                      }
+                      setDialogState(() {
+                        isSaving = true;
+                        localError = null;
+                      });
+                      final ok = await context.read<AuthProvider>().updateCurrentUserProfile(n, e);
+                      if (ok) {
+                        Navigator.of(dialogCtx).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(context.tr('Profile updated successfully!')),
+                            backgroundColor: AppColors.success,
+                          ),
+                        );
+                      } else {
+                        setDialogState(() {
+                          isSaving = false;
+                          localError = context.read<AuthProvider>().errorMessage ?? 'Failed to update profile';
+                        });
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: isSaving
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(context.tr('Save Changes')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -142,7 +247,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(context.tr('User Details'), style: AppTypography.h3Of(context)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.person_outline, size: 20, color: colors.primary),
+                              const SizedBox(width: 8),
+                              Text(context.tr('User Details'), style: AppTypography.h3Of(context)),
+                            ],
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () => _showEditProfileDialog(context, user),
+                            icon: const Icon(Icons.edit_outlined, size: 14),
+                            label: Text(context.tr('Edit Profile')),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 16),
                       _SettingItem(label: context.tr('Full Name'), value: user.fullName, colors: colors),
                       _SettingItem(label: context.tr('Email'), value: user.email, colors: colors),

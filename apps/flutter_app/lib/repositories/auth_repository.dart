@@ -8,6 +8,8 @@ class AuthRepository {
 
   UserProfile? getPersistedUser() => _authService.getPersistedUser();
 
+  List<UserProfile> getAllUsers() => _authService.getAllUsers();
+
   Future<UserProfile> login(String email, String password) =>
       _authService.loginWithEmail(email, password);
 
@@ -20,8 +22,17 @@ class AuthRepository {
   Future<bool> resetUserPassword(String email, String newPassword) =>
       _authService.resetUserPassword(email, newPassword);
 
+  Future<void> saveOrUpdateUser(UserProfile profile, {String? password}) =>
+      _authService.saveOrUpdateUser(profile, password: password);
+
   Future<void> registerUser(UserProfile profile, String password) =>
       _authService.registerCustomUser(profile, password);
+
+  Future<void> deleteUser(String userId) =>
+      _authService.deleteUser(userId);
+
+  Future<UserProfile> updateCurrentUserProfile(String fullName, String email) =>
+      _authService.updateCurrentUserProfile(fullName, email);
 
   List<UserProfile> getCustomUsers() => _authService.getCustomUsers();
 

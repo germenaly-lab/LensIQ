@@ -7,8 +7,135 @@ import 'mock_data_service.dart';
 
 class AuthService {
   final SharedPreferences _prefs;
+  static const String keyUserDirectory = 'lensiq_users_directory';
 
   AuthService(this._prefs);
+
+  /**
+   * Retrieves all users from persistent local storage
+   */
+  List<UserProfile> getAllUsers() {
+    final raw = _prefs.getString(keyUserDirectory);
+    if (raw != null) {
+      try {
+        final List<dynamic> list = jsonDecode(raw);
+        return list.map((item) => UserProfile.fromJson(item as Map<String, dynamic>)).toList();
+      } catch (_) {}
+    }
+
+    // Initialize default directory once if not present
+    final initialList = <UserProfile>[];
+
+    // Seed default Super Admin (editable / deletable)
+    final defaultAdmin = const UserProfile(
+      id: 'usr-super-admin-01',
+      email: 'admin@lensiq.cloud',
+      fullName: 'Super Admin',
+      role: UserRole.superAdmin,
+      companyId: '11111111-1111-1111-1111-111111111111',
+      companyName: 'Ego Retail Holding',
+      authorizedBranchIds: [
+        '33333333-3333-3333-3333-333333333333',
+        '33333333-3333-3333-3333-333333333334',
+        '33333333-3333-3333-3333-333333333335',
+        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+      ],
+    );
+    initialList.add(defaultAdmin);
+
+    // Seed Sara and Tamer
+    for (final u in MockDataService.demoUsers) {
+      if (u.id != defaultAdmin.id) {
+        initialList.add(u);
+      }
+    }
+
+    // Merge any previously saved custom users
+    final customUsersRaw = _prefs.getString('lensiq_custom_users');
+    if (customUsersRaw != null) {
+      try {
+        final Map<String, dynamic> customUsers = jsonDecode(customUsersRaw);
+        for (final entry in customUsers.values) {
+          final profile = UserProfile.fromJson((entry as Map<String, dynamic>)['profile'] as Map<String, dynamic>);
+          if (!initialList.any((x) => x.id == profile.id || x.email.toLowerCase() == profile.email.toLowerCase())) {
+            initialList.insert(0, profile);
+          }
+        }
+      } catch (_) {}
+    }
+
+    _saveUserDirectory(initialList);
+    return initialList;
+  }
+
+  Future<void> _saveUserDirectory(List<UserProfile> users) async {
+    final list = users.map((u) => u.toJson()).toList();
+    await _prefs.setString(keyUserDirectory, jsonEncode(list));
+  }
+
+  /**
+   * Saves or updates a user in the persistent directory
+   */
+  Future<void> saveOrUpdateUser(UserProfile user, {String? password}) async {
+    final users = getAllUsers();
+    final idx = users.indexWhere((u) => u.id == user.id || u.email.toLowerCase() == user.email.toLowerCase());
+    if (idx != -1) {
+      users[idx] = user;
+    } else {
+      users.insert(0, user);
+    }
+    await _saveUserDirectory(users);
+
+    if (password != null && password.isNotEmpty) {
+      await resetUserPassword(user.email, password);
+    }
+
+    // If updating current active session
+    final current = getPersistedUser();
+    if (current != null && (current.id == user.id || current.email.toLowerCase() == user.email.toLowerCase())) {
+      final token = _prefs.getString(AppConstants.keyAuthToken) ?? 'token_${user.id}';
+      await _persistSession(user, token);
+    }
+  }
+
+  /**
+   * Permanently deletes a user from the persistent directory
+   */
+  Future<void> deleteUser(String userId) async {
+    final users = getAllUsers();
+    final userToDelete = users.firstWhere(
+      (u) => u.id == userId,
+      orElse: () => const UserProfile(id: '', email: '', fullName: '', role: UserRole.branchSecurity),
+    );
+    users.removeWhere((u) => u.id == userId);
+    await _saveUserDirectory(users);
+
+    // Clean up custom users record if present
+    if (userToDelete.email.isNotEmpty) {
+      final customUsersRaw = _prefs.getString('lensiq_custom_users');
+      if (customUsersRaw != null) {
+        try {
+          final Map<String, dynamic> customUsers = jsonDecode(customUsersRaw);
+          customUsers.remove(userToDelete.email.toLowerCase());
+          await _prefs.setString('lensiq_custom_users', jsonEncode(customUsers));
+        } catch (_) {}
+      }
+    }
+  }
+
+  /**
+   * Updates the profile of the currently logged-in user
+   */
+  Future<UserProfile> updateCurrentUserProfile(String fullName, String email) async {
+    final current = getPersistedUser();
+    if (current == null) throw Exception('No active user found');
+    final updated = current.copyWith(
+      fullName: fullName.trim(),
+      email: email.trim(),
+    );
+    await saveOrUpdateUser(updated);
+    return updated;
+  }
 
   /**
    * Restores persisted user profile from local storage on app start
@@ -18,68 +145,61 @@ class AuthService {
     if (raw == null) return null;
     try {
       final json = jsonDecode(raw) as Map<String, dynamic>;
-      return UserProfile.fromJson(json);
+      final user = UserProfile.fromJson(json);
+      // Synchronize with directory to ensure latest edits (e.g. name/email) are reflected
+      final all = getAllUsers();
+      final updated = all.firstWhere(
+        (u) => u.id == user.id || u.email.toLowerCase() == user.email.toLowerCase(),
+        orElse: () => user,
+      );
+      return updated;
     } catch (_) {
       return null;
     }
   }
 
   /**
-   * Authenticate via Persistent Custom Users, Supabase, or seeded demo accounts
+   * Authenticate via Persistent User Directory, Supabase, or seeded demo accounts
    */
   Future<UserProfile> loginWithEmail(String email, String password) async {
     final cleanEmail = email.trim().toLowerCase();
+    final allUsers = getAllUsers();
 
-    // 1. Check if Super Admin login with customizable persistent password
-    if (cleanEmail == 'admin@lensiq.cloud') {
-      final expectedPass = _prefs.getString('lensiq_admin_password') ?? 'password123';
-      if (password.isNotEmpty && password != expectedPass) {
-        throw Exception('Incorrect password for Super Admin account.');
-      }
-      final superAdmin = MockDataService.demoUsers.firstWhere(
-        (u) => u.email == 'admin@lensiq.cloud',
-      );
-      await _persistSession(superAdmin, 'demo_token_${superAdmin.id}');
-      return superAdmin;
-    }
-
-    // 2. Check for registered custom users in persistent storage
-    final customUsersRaw = _prefs.getString('lensiq_custom_users');
-    if (customUsersRaw != null) {
-      try {
-        final Map<String, dynamic> customUsers = jsonDecode(customUsersRaw);
-        if (customUsers.containsKey(cleanEmail)) {
-          final userEntry = customUsers[cleanEmail] as Map<String, dynamic>;
-          final storedPass = userEntry['password'] as String? ?? '';
-          if (password.isNotEmpty && password != storedPass) {
-            throw Exception('Incorrect password. Please verify your credentials.');
-          }
-          final profile = UserProfile.fromJson(userEntry['profile'] as Map<String, dynamic>);
-          await _persistSession(profile, 'token_${profile.id}');
-          return profile;
-        }
-      } catch (e) {
-        if (e is Exception) rethrow;
-      }
-    }
-
-    // 3. Check for seeded demo credentials
-    final matchedDemo = MockDataService.demoUsers.firstWhere(
+    final matched = allUsers.firstWhere(
       (u) => u.email.toLowerCase() == cleanEmail,
-      orElse: () => const UserProfile(
-        id: '',
-        email: '',
-        fullName: '',
-        role: UserRole.branchSecurity,
-      ),
+      orElse: () => const UserProfile(id: '', email: '', fullName: '', role: UserRole.branchSecurity),
     );
 
-    if (matchedDemo.id.isNotEmpty) {
-      await _persistSession(matchedDemo, 'demo_token_${matchedDemo.id}');
-      return matchedDemo;
+    if (matched.id.isNotEmpty) {
+      // Validate password
+      if (cleanEmail == 'admin@lensiq.cloud' || matched.role == UserRole.superAdmin) {
+        final expectedPass = _prefs.getString('lensiq_admin_password') ?? 'password123';
+        if (password.isNotEmpty && password != expectedPass) {
+          throw Exception('Incorrect password for Super Admin account.');
+        }
+      } else {
+        final customUsersRaw = _prefs.getString('lensiq_custom_users');
+        if (customUsersRaw != null) {
+          try {
+            final Map<String, dynamic> customUsers = jsonDecode(customUsersRaw);
+            if (customUsers.containsKey(cleanEmail)) {
+              final userEntry = customUsers[cleanEmail] as Map<String, dynamic>;
+              final storedPass = userEntry['password'] as String? ?? 'password123';
+              if (password.isNotEmpty && password != storedPass) {
+                throw Exception('Incorrect password. Please verify your credentials.');
+              }
+            }
+          } catch (e) {
+            if (e is Exception) rethrow;
+          }
+        }
+      }
+
+      await _persistSession(matched, 'token_${matched.id}');
+      return matched;
     }
 
-    // 4. Fallback to live Supabase Authentication if initialized
+    // Fallback to live Supabase Authentication if initialized
     if (SupabaseService.isInitialized) {
       try {
         final res = await SupabaseService.client!.auth.signInWithPassword(
@@ -92,7 +212,6 @@ class AuthService {
           throw Exception('Authentication succeeded but user record is null.');
         }
 
-        // Fetch user role and tenant metadata
         final roleStr = user.userMetadata?['role'] as String? ?? 'branch_security';
         final userProfile = UserProfile(
           id: user.id,
@@ -105,13 +224,13 @@ class AuthService {
         );
 
         await _persistSession(userProfile, res.session?.accessToken ?? 'session_token');
+        await saveOrUpdateUser(userProfile);
         return userProfile;
       } catch (e) {
         throw Exception('Login failed: ${e.toString().replaceAll('Exception:', '').trim()}');
       }
     }
 
-    // If Supabase is not connected and email wasn't found
     throw Exception('User account "$cleanEmail" not found. You can add new user accounts in the Users section.');
   }
 
@@ -126,7 +245,7 @@ class AuthService {
     final currentUser = getPersistedUser();
     final cleanEmail = currentUser?.email.toLowerCase() ?? 'admin@lensiq.cloud';
 
-    if (cleanEmail == 'admin@lensiq.cloud') {
+    if (cleanEmail == 'admin@lensiq.cloud' || currentUser?.role == UserRole.superAdmin) {
       final expected = _prefs.getString('lensiq_admin_password') ?? 'password123';
       if (currentPassword != expected) {
         throw Exception('Current password does not match.');
@@ -135,7 +254,6 @@ class AuthService {
       return true;
     }
 
-    // If custom user
     final customUsersRaw = _prefs.getString('lensiq_custom_users');
     if (customUsersRaw != null) {
       final Map<String, dynamic> customUsers = jsonDecode(customUsersRaw);
@@ -189,7 +307,8 @@ class AuthService {
       await _prefs.setString('lensiq_custom_users', jsonEncode(customUsers));
       return true;
     } else {
-      final matchedDemo = MockDataService.demoUsers.firstWhere(
+      final all = getAllUsers();
+      final matched = all.firstWhere(
         (u) => u.email.toLowerCase() == cleanEmail,
         orElse: () => UserProfile(
           id: 'usr-${DateTime.now().millisecondsSinceEpoch}',
@@ -200,7 +319,7 @@ class AuthService {
       );
       customUsers[cleanEmail] = {
         'password': newPassword,
-        'profile': matchedDemo.toJson(),
+        'profile': matched.toJson(),
       };
       await _prefs.setString('lensiq_custom_users', jsonEncode(customUsers));
       return true;
@@ -211,43 +330,24 @@ class AuthService {
    * Register a custom user into persistent local storage
    */
   Future<void> registerCustomUser(UserProfile profile, String password) async {
-    final customUsersRaw = _prefs.getString('lensiq_custom_users');
-    Map<String, dynamic> customUsers = {};
-    if (customUsersRaw != null) {
-      try {
-        customUsers = jsonDecode(customUsersRaw) as Map<String, dynamic>;
-      } catch (_) {}
-    }
-    customUsers[profile.email.trim().toLowerCase()] = {
-      'password': password.isNotEmpty ? password : 'password123',
-      'profile': profile.toJson(),
-    };
-    await _prefs.setString('lensiq_custom_users', jsonEncode(customUsers));
+    await saveOrUpdateUser(profile, password: password);
   }
 
   /**
-   * Retrieve all custom registered users
+   * Retrieve all registered users
    */
   List<UserProfile> getCustomUsers() {
-    final customUsersRaw = _prefs.getString('lensiq_custom_users');
-    if (customUsersRaw == null) return [];
-    try {
-      final Map<String, dynamic> customUsers = jsonDecode(customUsersRaw);
-      return customUsers.values
-          .map((v) => UserProfile.fromJson((v as Map<String, dynamic>)['profile'] as Map<String, dynamic>))
-          .toList();
-    } catch (_) {
-      return [];
-    }
+    return getAllUsers();
   }
 
   /**
    * Switch role instantly for demo / pairing presentation
    */
   Future<UserProfile> switchDemoRole(UserRole role) async {
-    final demoUser = MockDataService.demoUsers.firstWhere(
+    final all = getAllUsers();
+    final demoUser = all.firstWhere(
       (u) => u.role == role,
-      orElse: () => MockDataService.demoUsers.first,
+      orElse: () => all.isNotEmpty ? all.first : MockDataService.demoUsers.first,
     );
 
     await _persistSession(demoUser, 'demo_token_${demoUser.id}');

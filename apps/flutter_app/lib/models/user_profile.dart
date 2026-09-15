@@ -17,9 +17,9 @@ enum UserRole {
   static UserRole fromString(String? role) {
     if (role == null) return UserRole.branchSecurity;
     final r = role.toLowerCase().replaceAll(' ', '_');
-    if (r == 'super_admin') return UserRole.superAdmin;
-    if (r == 'brand_manager' || r == 'company_admin') return UserRole.brandManager;
-    if (r == 'branch_security' || r == 'branch_manager' || r == 'viewer') return UserRole.branchSecurity;
+    if (r == 'super_admin' || r == 'superadmin') return UserRole.superAdmin;
+    if (r == 'brand_manager' || r == 'brandmanager' || r == 'company_admin' || r == 'companyadmin') return UserRole.brandManager;
+    if (r == 'branch_security' || r == 'branchsecurity' || r == 'branch_manager' || r == 'viewer') return UserRole.branchSecurity;
     return UserRole.branchSecurity;
   }
 }
@@ -50,6 +50,34 @@ class UserProfile {
     this.branchName,
     this.authorizedBranchIds = const [],
   });
+
+  UserProfile copyWith({
+    String? id,
+    String? email,
+    String? fullName,
+    UserRole? role,
+    String? companyId,
+    String? companyName,
+    String? brandId,
+    String? brandName,
+    String? branchId,
+    String? branchName,
+    List<String>? authorizedBranchIds,
+  }) {
+    return UserProfile(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      fullName: fullName ?? this.fullName,
+      role: role ?? this.role,
+      companyId: companyId ?? this.companyId,
+      companyName: companyName ?? this.companyName,
+      brandId: brandId ?? this.brandId,
+      brandName: brandName ?? this.brandName,
+      branchId: branchId ?? this.branchId,
+      branchName: branchName ?? this.branchName,
+      authorizedBranchIds: authorizedBranchIds ?? this.authorizedBranchIds,
+    );
+  }
 
   bool get isSuperAdmin => role == UserRole.superAdmin;
   bool get isBrandManager => role == UserRole.brandManager;

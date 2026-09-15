@@ -325,6 +325,14 @@ class AppLocaleProvider extends ChangeNotifier {
     'General Manager': 'مدير عام للنظام',
     'General Manager has full privileges across all companies, branches, cameras, and users.': 'صلاحية المدير العام تمنح تحكماً كاملاً وشاملاً لكافة الشركات والفروع والكاميرات والمستخدمين.',
     'Enter new password for': 'أدخل كلمة المرور الجديدة لـ',
+    'Edit Profile': 'تعديل الملف الشخصي',
+    'Profile updated successfully!': 'تم تحديث بيانات الملف الشخصي بنجاح!',
+    'User updated successfully!': 'تم تحديث بيانات المستخدم بنجاح!',
+    'User deleted successfully!': 'تم حذف المستخدم بنجاح!',
+    'Cannot delete currently logged-in account': 'لا يمكنك حذف حسابك الحالي أثناء تسجيل الدخول به',
+    'Are you sure you want to permanently delete': 'هل أنت متأكد من حذف هذا المستخدم نهائياً؟',
+    'This action will permanently remove this user from the system.': 'سيؤدي هذا الإجراء إلى إزالة المستخدم وحظر دخوله للنظام نهائياً.',
+    'Permanent Delete': 'حذف نهائي',
 
     // Notifications Panel & Header
     'Alerts & Notifications': 'التنبيهات والإشعارات الأمنية',
