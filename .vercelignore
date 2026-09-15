@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+/apps/
+/services/
+/tests/
+*.log
+*.md
+.venv
+venv
