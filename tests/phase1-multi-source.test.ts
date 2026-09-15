@@ -217,7 +217,7 @@ describe('Phase 1 — Multi-Source Camera Architecture Test Suite', () => {
     const safeDto = CameraSerializer.serializeForClient(cameraWithCredentials);
 
     // 1. credentials_reference must not exist on the client DTO
-    expect((safeDto as Record<string, unknown>).credentials_reference).toBeUndefined();
+    expect((safeDto as any).credentials_reference).toBeUndefined();
 
     // 2. Inline passwords inside RTSP URLs must be stripped
     expect(safeDto.rtsp_url).not.toContain('super_secret_password_123');
@@ -245,8 +245,8 @@ describe('Phase 1 — Multi-Source Camera Architecture Test Suite', () => {
     };
 
     const safeHikDto = CameraSerializer.serializeForClient(hikCameraWithSecret);
-    expect((safeHikDto as Record<string, unknown>).credentials_reference).toBeUndefined();
-    expect((safeHikDto as Record<string, unknown>).hik_username).toBeUndefined();
+    expect((safeHikDto as any).credentials_reference).toBeUndefined();
+    expect((safeHikDto as any).hik_username).toBeUndefined();
     expect(safeHikDto.hik_device_id).toBe('HIK-SECRET-DEVICE-01');
   });
 

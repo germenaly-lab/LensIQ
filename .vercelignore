@@ -10,3 +10,4 @@ services/
 docker/
 supabase/
 apps/flutter_app/
+*.pt
