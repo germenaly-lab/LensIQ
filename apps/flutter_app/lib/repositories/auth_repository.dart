@@ -17,6 +17,9 @@ class AuthRepository {
   Future<bool> changePassword(String currentPassword, String newPassword) =>
       _authService.changePassword(currentPassword, newPassword);
 
+  Future<bool> resetUserPassword(String email, String newPassword) =>
+      _authService.resetUserPassword(email, newPassword);
+
   Future<void> registerUser(UserProfile profile, String password) =>
       _authService.registerCustomUser(profile, password);
 

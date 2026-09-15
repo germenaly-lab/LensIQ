@@ -187,6 +187,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         style: TextStyle(fontSize: 14, color: colors.textPrimary),
                         decoration: InputDecoration(
                           labelText: context.tr('Current Password'),
+                          hintText: 'Default: password123',
                           prefixIcon: Icon(Icons.lock_outline, size: 18, color: colors.textSecondary),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                           enabledBorder: OutlineInputBorder(

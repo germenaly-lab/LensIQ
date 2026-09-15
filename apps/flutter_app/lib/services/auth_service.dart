@@ -116,18 +116,95 @@ class AuthService {
   }
 
   /**
-   * Change password for Super Admin or current user
+   * Change password for current logged-in user
    */
   Future<bool> changePassword(String currentPassword, String newPassword) async {
+    if (newPassword.length < 6) {
+      throw Exception('New password must be at least 6 characters long.');
+    }
+
+    final currentUser = getPersistedUser();
+    final cleanEmail = currentUser?.email.toLowerCase() ?? 'admin@lensiq.cloud';
+
+    if (cleanEmail == 'admin@lensiq.cloud') {
+      final expected = _prefs.getString('lensiq_admin_password') ?? 'password123';
+      if (currentPassword != expected) {
+        throw Exception('Current password does not match.');
+      }
+      await _prefs.setString('lensiq_admin_password', newPassword);
+      return true;
+    }
+
+    // If custom user
+    final customUsersRaw = _prefs.getString('lensiq_custom_users');
+    if (customUsersRaw != null) {
+      final Map<String, dynamic> customUsers = jsonDecode(customUsersRaw);
+      if (customUsers.containsKey(cleanEmail)) {
+        final entry = Map<String, dynamic>.from(customUsers[cleanEmail] as Map);
+        final stored = entry['password'] as String? ?? 'password123';
+        if (currentPassword != stored) {
+          throw Exception('Current password does not match.');
+        }
+        entry['password'] = newPassword;
+        customUsers[cleanEmail] = entry;
+        await _prefs.setString('lensiq_custom_users', jsonEncode(customUsers));
+        return true;
+      }
+    }
+
     final expected = _prefs.getString('lensiq_admin_password') ?? 'password123';
     if (currentPassword != expected) {
       throw Exception('Current password does not match.');
     }
+    await _prefs.setString('lensiq_admin_password', newPassword);
+    return true;
+  }
+
+  /**
+   * Directly reset or update password for any specific user (Admin privilege)
+   */
+  Future<bool> resetUserPassword(String email, String newPassword) async {
+    final cleanEmail = email.trim().toLowerCase();
     if (newPassword.length < 6) {
       throw Exception('New password must be at least 6 characters long.');
     }
-    await _prefs.setString('lensiq_admin_password', newPassword);
-    return true;
+
+    if (cleanEmail == 'admin@lensiq.cloud') {
+      await _prefs.setString('lensiq_admin_password', newPassword);
+      return true;
+    }
+
+    final customUsersRaw = _prefs.getString('lensiq_custom_users');
+    Map<String, dynamic> customUsers = {};
+    if (customUsersRaw != null) {
+      try {
+        customUsers = jsonDecode(customUsersRaw) as Map<String, dynamic>;
+      } catch (_) {}
+    }
+
+    if (customUsers.containsKey(cleanEmail)) {
+      final userEntry = Map<String, dynamic>.from(customUsers[cleanEmail] as Map);
+      userEntry['password'] = newPassword;
+      customUsers[cleanEmail] = userEntry;
+      await _prefs.setString('lensiq_custom_users', jsonEncode(customUsers));
+      return true;
+    } else {
+      final matchedDemo = MockDataService.demoUsers.firstWhere(
+        (u) => u.email.toLowerCase() == cleanEmail,
+        orElse: () => UserProfile(
+          id: 'usr-${DateTime.now().millisecondsSinceEpoch}',
+          email: cleanEmail,
+          fullName: 'User',
+          role: UserRole.branchSecurity,
+        ),
+      );
+      customUsers[cleanEmail] = {
+        'password': newPassword,
+        'profile': matchedDemo.toJson(),
+      };
+      await _prefs.setString('lensiq_custom_users', jsonEncode(customUsers));
+      return true;
+    }
   }
 
   /**

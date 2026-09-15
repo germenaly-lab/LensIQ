@@ -322,6 +322,9 @@ class AppLocaleProvider extends ChangeNotifier {
     'Please fill in all password fields': 'يرجى ملء جميع حقول كلمة المرور',
     'New passwords do not match': 'كلمتا المرور غير متطابقتين',
     'Password must be at least 6 characters': 'يجب ألا تقل كلمة المرور عن 6 أحرف',
+    'General Manager': 'مدير عام للنظام',
+    'General Manager has full privileges across all companies, branches, cameras, and users.': 'صلاحية المدير العام تمنح تحكماً كاملاً وشاملاً لكافة الشركات والفروع والكاميرات والمستخدمين.',
+    'Enter new password for': 'أدخل كلمة المرور الجديدة لـ',
 
     // Notifications Panel & Header
     'Alerts & Notifications': 'التنبيهات والإشعارات الأمنية',
